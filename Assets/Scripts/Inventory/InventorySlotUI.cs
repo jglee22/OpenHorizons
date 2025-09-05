@@ -22,6 +22,10 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
     [Header("툴팁")]
     [SerializeField] private SimpleTooltip tooltip;
     
+    // 툴팁 상태 추적
+    private bool isTooltipShowing = false;
+    private Coroutine hideTooltipCoroutine = null;
+    
 
     
     private int slotIndex;
@@ -217,13 +221,14 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
     /// </summary>
     public void OnPointerExit(PointerEventData eventData)
     {
+        Debug.Log("OnPointerExit 호출됨");
         if (backgroundImage != null && !isSelected)
         {
             backgroundImage.color = normalColor;
         }
         
-        // 툴팁 숨기기 일단 제거 (깜빡임 방지)
-        // HideTooltip();
+        // 툴팁 숨기기 코루틴 시작 (깜빡임 방지를 위해 짧은 지연)
+        hideTooltipCoroutine = StartCoroutine(DelayedHideTooltip());
     }
     
     /// <summary>
@@ -259,6 +264,13 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
             return;
         }
         
+        // 이미 툴팁이 표시 중이면 숨기기 코루틴 중단
+        if (hideTooltipCoroutine != null)
+        {
+            StopCoroutine(hideTooltipCoroutine);
+            hideTooltipCoroutine = null;
+        }
+        
         // 현재 슬롯의 아이템 정보 가져오기
         var slot = GetCurrentSlot();
         Debug.Log($"슬롯 {slotIndex} 데이터 - slot: {slot != null}, isOccupied: {slot?.isOccupied}, item: {slot?.item?.itemName}");
@@ -267,6 +279,7 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
         {
             // 마우스 위치 전달하여 툴팁 표시
             tooltip.ShowTooltip(slot.item, Input.mousePosition);
+            isTooltipShowing = true;
         }
         else
         {
@@ -282,10 +295,64 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
         if (tooltip != null)
         {
             tooltip.HideTooltip();
+            isTooltipShowing = false;
         }
     }
     
-
+    /// <summary>
+    /// 지연된 툴팁 숨기기 (깜빡임 방지)
+    /// </summary>
+    private System.Collections.IEnumerator DelayedHideTooltip()
+    {
+        // 매우 짧은 지연으로 깜빡임 방지
+        yield return new WaitForSeconds(0.02f);
+        
+        // 마우스가 실제로 슬롯 영역을 벗어났는지 한 번 더 확인
+        if (IsMouseStillOverSlot())
+        {
+            Debug.Log($"슬롯 {slotIndex} - 마우스가 여전히 슬롯 위에 있음, 툴팁 유지");
+            hideTooltipCoroutine = null;
+            yield break;
+        }
+        
+        // 툴팁 숨기기
+        if (tooltip != null && isTooltipShowing)
+        {
+            Debug.Log($"슬롯 {slotIndex} - 지연 후 툴팁 숨김");
+            HideTooltip();
+        }
+        
+        // 코루틴 참조 초기화
+        hideTooltipCoroutine = null;
+    }
+    
+    /// <summary>
+    /// 마우스가 여전히 슬롯 위에 있는지 확인
+    /// </summary>
+    private bool IsMouseStillOverSlot()
+    {
+        if (backgroundImage == null) return false;
+        
+        // 마우스 위치
+        Vector3 mousePos = Input.mousePosition;
+        
+        // 슬롯의 스크린 좌표 계산
+        Vector3[] corners = new Vector3[4];
+        backgroundImage.rectTransform.GetWorldCorners(corners);
+        
+        // 슬롯의 경계 계산
+        float minX = Mathf.Min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+        float maxX = Mathf.Max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+        float minY = Mathf.Min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+        float maxY = Mathf.Max(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+        
+        // 마우스가 슬롯 영역 안에 있는지 확인
+        bool isInside = mousePos.x >= minX && mousePos.x <= maxX && mousePos.y >= minY && mousePos.y <= maxY;
+        
+        Debug.Log($"슬롯 {slotIndex} - 마우스 위치 확인: ({mousePos.x:F1}, {mousePos.y:F1}), 슬롯 경계: X({minX:F1}~{maxX:F1}), Y({minY:F1}~{maxY:F1}), 안에 있음: {isInside}");
+        
+        return isInside;
+    }
     
     /// <summary>
     /// 선택 상태 설정
@@ -329,8 +396,11 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
         
         Debug.Log($"드래그 시작: 슬롯 {slotIndex}, 아이템: {slot.item.itemName}");
         
-        // 툴팁 숨기기 일단 제거 (깜빡임 방지)
-        // HideTooltip();
+        // 드래그 시작 시 툴팁 숨기기
+        if (tooltip != null)
+        {
+            tooltip.HideTooltip();
+        }
     }
     
     /// <summary>

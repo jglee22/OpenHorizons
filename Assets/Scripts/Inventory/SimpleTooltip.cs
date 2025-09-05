@@ -33,6 +33,7 @@ public class SimpleTooltip : MonoBehaviour
         // 배경 이미지 추가
         Image background = tooltipPanel.AddComponent<Image>();
         background.color = new Color(0.1f, 0.1f, 0.1f, 0.95f);
+        background.raycastTarget = false; // 마우스 이벤트 가로채기 방지
         
         // RectTransform 설정
         tooltipRectTransform = tooltipPanel.GetComponent<RectTransform>();
