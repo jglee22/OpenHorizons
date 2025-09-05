@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.IO;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -17,8 +18,8 @@ public class SceneSetup : MonoBehaviour
     
     [Header("Player Settings")]
     [SerializeField] private Vector3 playerSpawnPosition = new Vector3(0, 1, 0);
-    [SerializeField] private float playerHeight = 2f;
-    [SerializeField] private float playerRadius = 0.5f;
+    [SerializeField] private float playerHeight = 1.8f; // Rio 캐릭터에 맞게 조정
+    [SerializeField] private float playerRadius = 0.4f; // Rio 캐릭터에 맞게 조정
     
     [Header("Camera Settings")]
     [SerializeField] private Vector3 cameraOffset = new Vector3(0, 2, -5);
@@ -26,6 +27,9 @@ public class SceneSetup : MonoBehaviour
     [Header("Ground Settings")]
     [SerializeField] private Vector3 groundSize = new Vector3(50, 1, 50);
     [SerializeField] private Material groundMaterial;
+    
+    // Rio 프리펩 참조를 저장하기 위한 변수
+    private GameObject rioPrefab;
     
     private void Start()
     {
@@ -62,18 +66,70 @@ public class SceneSetup : MonoBehaviour
             return;
         }
         
-        // Create player GameObject
-        GameObject player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        player.name = "Player";
+        // Load Rio prefab
+        rioPrefab = Resources.Load<GameObject>("Unity Technologies/LowpolyCharacterRio/Prefabs/Rio");
+        if (rioPrefab == null)
+        {
+            // Resources.Load로 안되면 직접 경로로 로드
+            rioPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Unity Technologies/LowpolyCharacterRio/Prefabs/Rio.prefab");
+        }
+        
+        GameObject player;
+        if (rioPrefab != null)
+        {
+            // Rio 프리펩으로 플레이어 생성
+            player = Instantiate(rioPrefab);
+            player.name = "Player";
+            Debug.Log("Rio 프리펩으로 플레이어 생성됨!");
+        }
+        else
+        {
+            // Rio 프리펩을 찾을 수 없으면 기본 캡슐 생성
+            Debug.LogWarning("Rio 프리펩을 찾을 수 없어 기본 캡슐으로 생성합니다.");
+            player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            player.name = "Player";
+        }
+        
         player.tag = "Player";
-        player.transform.position = playerSpawnPosition;
+        
+        // Rio 캐릭터의 피벗 포인트를 고려한 위치 조정
+        if (rioPrefab != null)
+        {
+            // Rio 캐릭터의 실제 높이를 고려한 위치 설정
+            // CharacterController의 높이와 중심점을 고려하여 땅에 닿도록 조정
+            float adjustedY = playerHeight * 0.5f; // 캐릭터 높이의 절반만큼 위로
+            Vector3 adjustedPosition = playerSpawnPosition;
+            // adjustedPosition.y = adjustedY;
+            player.transform.position = adjustedPosition;
+            Debug.Log($"Rio 캐릭터 위치 조정: 높이 {playerHeight}, Y 위치 {adjustedY}");
+        }
+        else
+        {
+            player.transform.position = playerSpawnPosition;
+        }
         
         // Remove default collider and add CharacterController
-        DestroyImmediate(player.GetComponent<CapsuleCollider>());
+        Collider existingCollider = player.GetComponent<Collider>();
+        if (existingCollider != null)
+        {
+            DestroyImmediate(existingCollider);
+        }
+        
         CharacterController characterController = player.AddComponent<CharacterController>();
         characterController.height = playerHeight;
         characterController.radius = playerRadius;
-        characterController.center = Vector3.zero;
+        
+        // Rio 캐릭터의 경우 CharacterController 중심점 조정
+        if (rioPrefab != null)
+        {
+            // Rio 캐릭터의 높이를 고려한 중심점 설정
+            characterController.center = new Vector3(0, playerHeight * 0.5f, 0);
+            Debug.Log($"Rio 캐릭터 CharacterController 중심점: {characterController.center}");
+        }
+        else
+        {
+            characterController.center = Vector3.zero;
+        }
         
         // Add PlayerController script
         player.AddComponent<PlayerController>();
@@ -81,15 +137,172 @@ public class SceneSetup : MonoBehaviour
         // Add InteractionManager
         player.AddComponent<InteractionManager>();
         
-        // Create a simple material for the player using URP shader
-        Renderer renderer = player.GetComponent<Renderer>();
-        if (renderer != null)
+        // Rio 캐릭터에 Animator 컴포넌트 추가 및 설정
+        if (rioPrefab != null)
         {
-            Material playerMaterial = CreateURPMaterial(Color.blue);
-            renderer.material = playerMaterial;
+            SetupRioAnimations(player);
+        }
+        
+        // Rio 프리펩이면 기본 머티리얼 유지, 아니면 파란색 머티리얼 적용
+        if (rioPrefab == null)
+        {
+            Renderer renderer = player.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                Material playerMaterial = CreateURPMaterial(Color.blue);
+                renderer.material = playerMaterial;
+            }
         }
         
         Debug.Log("Player created successfully!");
+    }
+    
+    private void SetupRioAnimations(GameObject player)
+    {
+        // Rio 모델 찾기 (첫 번째 자식)
+        Transform rioModel = player.transform.GetChild(0);
+        if (rioModel == null)
+        {
+            Debug.LogWarning("Rio 모델을 찾을 수 없습니다.");
+            return;
+        }
+        
+        // Animator 컴포넌트 추가
+        Animator animator = rioModel.gameObject.AddComponent<Animator>();
+        
+        // 기본 애니메이션 클립들 로드
+        LoadDefaultAnimations(animator);
+        
+        // PlayerController에 Animator 참조 설정
+        PlayerController playerController = player.GetComponent<PlayerController>();
+        if (playerController != null)
+        {
+            playerController.animator = animator;
+        }
+        
+        Debug.Log("Rio 캐릭터 애니메이션 설정 완료!");
+    }
+    
+    private void LoadDefaultAnimations(Animator animator)
+    {
+#if UNITY_EDITOR
+        // Kevin Iglesias 애니메이션에서 기본 애니메이션들 로드
+        string basePath = "Assets/Kevin Iglesias/Human Animations/Animations/Male";
+        
+        // Idle 애니메이션 찾기 (기본 서기)
+        string[] idleFiles = Directory.GetFiles(basePath + "/Idles", "*.fbx");
+        
+        // Walk 애니메이션 찾기 (Forward만 사용)
+        string[] walkFiles = Directory.GetFiles(basePath + "/Movement/Walk", "*Forward.fbx");
+        
+        // Run 애니메이션 찾기 (Forward만 사용)
+        string[] runFiles = Directory.GetFiles(basePath + "/Movement/Run", "*Forward.fbx");
+        
+        // Jump 애니메이션 찾기 (Begin만 사용)
+        string[] jumpFiles = Directory.GetFiles(basePath + "/Movement/Jump", "*Begin.fbx");
+        
+        // Animator Controller 생성
+        CreateSimpleAnimatorController(animator, idleFiles, walkFiles, runFiles, jumpFiles);
+#endif
+    }
+    
+    private void CreateSimpleAnimatorController(Animator animator, string[] idleFiles, string[] walkFiles, string[] runFiles, string[] jumpFiles)
+    {
+#if UNITY_EDITOR
+        // Animations 폴더 생성
+        string animationsPath = "Assets/Animations";
+        if (!Directory.Exists(animationsPath))
+        {
+            Directory.CreateDirectory(animationsPath);
+        }
+        
+        // Animator Controller 생성
+        string controllerPath = animationsPath + "/RioAnimatorController.controller";
+        UnityEditor.Animations.AnimatorController controller = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
+        
+        // 파라미터 추가
+        controller.AddParameter("IsWalking", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("IsRunning", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("IsJumping", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("Speed", AnimatorControllerParameterType.Float);
+        controller.AddParameter("Jump", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("IsGrounded", AnimatorControllerParameterType.Bool);
+        
+        // 기본 상태들 생성
+        var idleState = controller.layers[0].stateMachine.AddState("Idle");
+        var walkState = controller.layers[0].stateMachine.AddState("Walk");
+        var runState = controller.layers[0].stateMachine.AddState("Run");
+        var jumpState = controller.layers[0].stateMachine.AddState("Jump");
+        
+        // 기본 상태를 Idle로 설정
+        controller.layers[0].stateMachine.defaultState = idleState;
+        
+        // 애니메이션 클립 할당
+        if (idleFiles.Length > 0)
+        {
+            var idleClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(idleFiles[0]);
+            if (idleClip != null)
+            {
+                idleState.motion = idleClip;
+            }
+        }
+        
+        if (walkFiles.Length > 0)
+        {
+            var walkClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(walkFiles[0]);
+            if (walkClip != null)
+            {
+                walkState.motion = walkClip;
+            }
+        }
+        
+        if (runFiles.Length > 0)
+        {
+            var runClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(runFiles[0]);
+            if (runClip != null)
+            {
+                runState.motion = runClip;
+            }
+        }
+        
+        if (jumpFiles.Length > 0)
+        {
+            var jumpClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(jumpFiles[0]);
+            if (jumpClip != null)
+            {
+                jumpState.motion = jumpClip;
+            }
+        }
+        
+        // 전환 조건 설정
+        var idleToWalk = idleState.AddTransition(walkState);
+        idleToWalk.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Greater, 0.1f, "Speed");
+        
+        var walkToIdle = walkState.AddTransition(idleState);
+        walkToIdle.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Less, 0.1f, "Speed");
+        
+        var walkToRun = walkState.AddTransition(runState);
+        walkToRun.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Greater, 5f, "Speed");
+        
+        var runToWalk = runState.AddTransition(walkState);
+        runToWalk.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Less, 5f, "Speed");
+        
+        // 점프 전환
+        var anyToJump = controller.layers[0].stateMachine.AddAnyStateTransition(jumpState);
+        anyToJump.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Jump");
+        
+        var jumpToIdle = jumpState.AddTransition(idleState);
+        jumpToIdle.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "IsGrounded");
+        
+        // Animator Controller 저장
+        EditorUtility.SetDirty(controller);
+        AssetDatabase.SaveAssets();
+        
+        // Animator에 Controller 할당
+        animator.runtimeAnimatorController = controller;
+        
+        Debug.Log("Rio Animator Controller가 생성되었습니다: " + controllerPath);
+#endif
     }
     
     private void CreateCamera()
@@ -123,7 +336,26 @@ public class SceneSetup : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
-            thirdPersonCamera.SetTarget(player.transform);
+            // Rio 캐릭터의 경우 Rio 모델을 카메라 타겟으로 설정
+            if (rioPrefab != null)
+            {
+                // Rio 모델 찾기 (Player의 첫 번째 자식)
+                Transform rioModel = player.transform.GetChild(0);
+                if (rioModel != null)
+                {
+                    thirdPersonCamera.SetTarget(rioModel);
+                    Debug.Log($"카메라 타겟을 Rio 모델로 설정: {rioModel.name}");
+                }
+                else
+                {
+                    thirdPersonCamera.SetTarget(player.transform);
+                    Debug.Log("Rio 모델을 찾을 수 없어 Player를 카메라 타겟으로 설정");
+                }
+            }
+            else
+            {
+                thirdPersonCamera.SetTarget(player.transform);
+            }
         }
         
         Debug.Log("Camera setup complete!");

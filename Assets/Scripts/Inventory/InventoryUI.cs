@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using AudioSystem;
 
 /// <summary>
 /// 인벤토리 UI 관리
@@ -275,6 +276,19 @@ public class InventoryUI : MonoBehaviour
     public void ToggleInventory()
     {
         SetVisible(!isVisible);
+        
+        // 인벤토리 열기/닫기 사운드 재생
+        if (AudioManager.Instance != null)
+        {
+            if (!isVisible)
+            {
+                AudioManager.Instance.PlayUISFX("inventory_open");
+            }
+            else
+            {
+                AudioManager.Instance.PlayUISFX("inventory_close");
+            }
+        }
     }
     
     /// <summary>
@@ -290,6 +304,11 @@ public class InventoryUI : MonoBehaviour
             if (visible)
             {
                 RefreshUI();
+            }
+            else
+            {
+                // 인벤토리를 닫을 때 모든 슬롯의 툴팁 숨기기
+                HideAllTooltips();
             }
         }
     }
@@ -311,6 +330,35 @@ public class InventoryUI : MonoBehaviour
     public bool IsInventoryOpen()
     {
         return isVisible;
+    }
+    
+    /// <summary>
+    /// 모든 슬롯의 툴팁 숨기기
+    /// </summary>
+    private void HideAllTooltips()
+    {
+        if (tooltip != null)
+        {
+            tooltip.HideTooltip();
+        }
+        
+        // 모든 슬롯의 툴팁 상태 초기화
+        foreach (var slotUI in slotUIs)
+        {
+            if (slotUI != null)
+            {
+                // reflection을 사용하여 isTooltipShowing 필드에 접근
+                var isTooltipShowingField = slotUI.GetType().GetField("isTooltipShowing", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                
+                if (isTooltipShowingField != null)
+                {
+                    isTooltipShowingField.SetValue(slotUI, false);
+                }
+            }
+        }
+        
+        Debug.Log("모든 툴팁이 숨겨졌습니다.");
     }
     
     /// <summary>
