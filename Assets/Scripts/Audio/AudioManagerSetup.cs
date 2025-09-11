@@ -27,10 +27,10 @@ namespace AudioSystem
                 audioManager = gameObject.AddComponent<AudioManager>();
             }
             
-            if (createAudioSources)
-            {
-                CreateAudioSources(audioManager);
-            }
+            // if (createAudioSources)
+            // {
+            //     CreateAudioSources(audioManager);
+            // }
         }
         
         private void CreateAudioSources(AudioManager audioManager)

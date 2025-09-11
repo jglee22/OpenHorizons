@@ -89,7 +89,7 @@ public class AnimatorFixerEditor : MonoBehaviour
             // 상태 머신 가져오기
             var stateMachine = controller.layers[0].stateMachine;
             
-            // 기본 상태 찾기
+            // 기본 상태 찾기 (더 유연하게)
             AnimatorState idleState = null;
             AnimatorState walkState = null;
             AnimatorState runState = null;
@@ -97,21 +97,46 @@ public class AnimatorFixerEditor : MonoBehaviour
             
             foreach (var state in stateMachine.states)
             {
-                switch (state.state.name)
+                string stateName = state.state.name.ToLower();
+                
+                // Idle 상태 찾기 (여러 가능한 이름)
+                if (stateName.Contains("idle") || stateName == "idle")
                 {
-                    case "HumanF@Idle01":
-                        idleState = state.state;
-                        break;
-                    case "HumanF@Walk01_Forward":
-                        walkState = state.state;
-                        break;
-                    case "HumanF@Run01_Forward":
-                        runState = state.state;
-                        break;
-                    case "HumanF@Jump01":
-                        jumpState = state.state;
-                        break;
+                    idleState = state.state;
+                    Debug.Log($"Idle 상태를 찾았습니다: {state.state.name}");
                 }
+                // Walk 상태 찾기
+                else if (stateName.Contains("walk") || stateName.Contains("walk01"))
+                {
+                    walkState = state.state;
+                    Debug.Log($"Walk 상태를 찾았습니다: {state.state.name}");
+                }
+                // Run 상태 찾기
+                else if (stateName.Contains("run") || stateName.Contains("run01"))
+                {
+                    runState = state.state;
+                    Debug.Log($"Run 상태를 찾았습니다: {state.state.name}");
+                }
+                // Jump 상태 찾기
+                else if (stateName.Contains("jump") || stateName.Contains("jump01"))
+                {
+                    jumpState = state.state;
+                    Debug.Log($"Jump 상태를 찾았습니다: {state.state.name}");
+                }
+            }
+            
+            // 상태 찾기 결과 확인
+            Debug.Log($"=== 상태 찾기 결과 ===");
+            Debug.Log($"Idle 상태: {(idleState != null ? "찾음" : "찾지 못함")}");
+            Debug.Log($"Walk 상태: {(walkState != null ? "찾음" : "찾지 못함")}");
+            Debug.Log($"Run 상태: {(runState != null ? "찾음" : "찾지 못함")}");
+            Debug.Log($"Jump 상태: {(jumpState != null ? "찾음" : "찾지 못함")}");
+            
+            // 사용 가능한 모든 상태 이름 출력
+            Debug.Log("=== 사용 가능한 상태들 ===");
+            foreach (var state in stateMachine.states)
+            {
+                Debug.Log($"- {state.state.name}");
             }
             
             // 기본 상태 설정
@@ -120,98 +145,129 @@ public class AnimatorFixerEditor : MonoBehaviour
                 stateMachine.defaultState = idleState;
                 Debug.Log("기본 상태를 Idle로 설정했습니다.");
             }
+            else
+            {
+                Debug.LogError("Idle 상태를 찾을 수 없습니다! 상태 이름을 확인해주세요.");
+            }
             
-            // 기존 Any State 전환 제거
+            // 기존 상태들 완전 제거 (새로 생성하기 위해)
+            Debug.Log("=== 기존 상태들 완전 제거 시작 ===");
+            
+            // 기존 상태들을 리스트로 수집
+            List<AnimatorState> statesToRemove = new List<AnimatorState>();
+            
+            if (idleState != null) statesToRemove.Add(idleState);
+            if (walkState != null) statesToRemove.Add(walkState);
+            if (runState != null) statesToRemove.Add(runState);
+            if (jumpState != null) statesToRemove.Add(jumpState);
+            
+            // 상태들 제거
+            foreach (var state in statesToRemove)
+            {
+                Debug.Log($"기존 상태 '{state.name}'을 제거합니다.");
+                stateMachine.RemoveState(state);
+            }
+            
+            // Any State 전환도 제거
+            Debug.Log($"Any State 전환 {stateMachine.anyStateTransitions.Length}개를 제거합니다.");
             while (stateMachine.anyStateTransitions.Length > 0)
             {
                 stateMachine.RemoveAnyStateTransition(stateMachine.anyStateTransitions[0]);
             }
             
-            // 기존 모든 전환 제거
-            if (idleState != null)
-            {
-                idleState.transitions = new AnimatorStateTransition[0];
-            }
-            if (walkState != null)
-            {
-                walkState.transitions = new AnimatorStateTransition[0];
-            }
-            if (runState != null)
-            {
-                runState.transitions = new AnimatorStateTransition[0];
-            }
-            if (jumpState != null)
-            {
-                jumpState.transitions = new AnimatorStateTransition[0];
-            }
+            Debug.Log("기존 상태들을 모두 제거했습니다.");
             
-            Debug.Log("기존 전환을 모두 제거했습니다.");
+            // 상태 변수들 초기화
+            idleState = null;
+            walkState = null;
+            runState = null;
+            jumpState = null;
+            
+            // 새로운 상태들 생성
+            Debug.Log("=== 새로운 상태들 생성 시작 ===");
+            
+            // Idle 상태 생성
+            idleState = stateMachine.AddState("Idle");
+            idleState.speed = 1.0f;
+            Debug.Log("✅ Idle 상태를 생성했습니다.");
+            
+            // Walk 상태 생성
+            walkState = stateMachine.AddState("Walk");
+            walkState.speed = 1.0f;
+            Debug.Log("✅ Walk 상태를 생성했습니다.");
+            
+            // Run 상태 생성
+            runState = stateMachine.AddState("Run");
+            runState.speed = 1.0f;
+            Debug.Log("✅ Run 상태를 생성했습니다.");
+            
+            // Jump 상태 생성
+            jumpState = stateMachine.AddState("Jump");
+            jumpState.speed = 1.0f;
+            Debug.Log("✅ Jump 상태를 생성했습니다.");
+            
+            // 기본 상태 설정
+            stateMachine.defaultState = idleState;
+            Debug.Log("✅ 기본 상태를 Idle로 설정했습니다.");
             
             // 새로운 전환 추가
-            if (idleState != null && walkState != null)
-            {
-                var idleToWalk = idleState.AddTransition(walkState);
-                idleToWalk.AddCondition(AnimatorConditionMode.If, 0, "IsWalking");
-                idleToWalk.duration = 0.1f; // 더 빠른 전환
-                Debug.Log("Idle → Walk 전환을 추가했습니다.");
-            }
+            Debug.Log("=== 새로운 전환 추가 시작 ===");
             
-            if (idleState != null && runState != null)
-            {
-                var idleToRun = idleState.AddTransition(runState);
-                idleToRun.AddCondition(AnimatorConditionMode.If, 0, "IsRunning");
-                idleToRun.duration = 0.1f; // 더 빠른 전환
-                Debug.Log("Idle → Run 전환을 추가했습니다.");
-            }
+            // Idle ↔ Walk 전환
+            var idleToWalk = idleState.AddTransition(walkState);
+            idleToWalk.AddCondition(AnimatorConditionMode.If, 0, "IsWalking");
+            idleToWalk.duration = 0.1f;
+            Debug.Log("✅ Idle → Walk 전환을 추가했습니다.");
             
-            if (walkState != null && idleState != null)
-            {
-                var walkToIdle = walkState.AddTransition(idleState);
-                walkToIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "IsWalking");
-                walkToIdle.duration = 0.1f; // 더 빠른 전환
-                Debug.Log("Walk → Idle 전환을 추가했습니다.");
-            }
+            var walkToIdle = walkState.AddTransition(idleState);
+            walkToIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "IsWalking");
+            walkToIdle.duration = 0.1f;
+            Debug.Log("✅ Walk → Idle 전환을 추가했습니다.");
             
-            if (walkState != null && runState != null)
-            {
-                var walkToRun = walkState.AddTransition(runState);
-                walkToRun.AddCondition(AnimatorConditionMode.If, 0, "IsRunning");
-                walkToRun.duration = 0.1f; // 더 빠른 전환
-                Debug.Log("Walk → Run 전환을 추가했습니다.");
-            }
+            // Idle ↔ Run 전환
+            var idleToRun = idleState.AddTransition(runState);
+            idleToRun.AddCondition(AnimatorConditionMode.If, 0, "IsRunning");
+            idleToRun.duration = 0.1f;
+            Debug.Log("✅ Idle → Run 전환을 추가했습니다.");
             
-            if (runState != null && walkState != null)
-            {
-                var runToWalk = runState.AddTransition(walkState);
-                runToWalk.AddCondition(AnimatorConditionMode.IfNot, 0, "IsRunning");
-                runToWalk.duration = 0.1f; // 더 빠른 전환
-                Debug.Log("Run → Walk 전환을 추가했습니다.");
-            }
+            var runToIdle = runState.AddTransition(idleState);
+            runToIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "IsRunning");
+            runToIdle.duration = 0.1f;
+            Debug.Log("✅ Run → Idle 전환을 추가했습니다.");
             
-            if (jumpState != null && idleState != null)
-            {
-                var jumpToIdle = jumpState.AddTransition(idleState);
-                jumpToIdle.duration = 0.1f; // 더 빠른 전환
-                jumpToIdle.hasExitTime = true;
-                jumpToIdle.exitTime = 0.8f; // 점프 애니메이션의 80% 지점에서 전환
-                Debug.Log("Jump → Idle 전환을 추가했습니다.");
-            }
+            // Walk ↔ Run 전환
+            var walkToRun = walkState.AddTransition(runState);
+            walkToRun.AddCondition(AnimatorConditionMode.If, 0, "IsRunning");
+            walkToRun.duration = 0.1f;
+            Debug.Log("✅ Walk → Run 전환을 추가했습니다.");
             
-            // Any State에서 Jump로의 전환
-            if (jumpState != null)
-            {
-                var anyToJump = stateMachine.AddAnyStateTransition(jumpState);
-                anyToJump.AddCondition(AnimatorConditionMode.If, 0, "Jump");
-                anyToJump.duration = 0.1f;
-                Debug.Log("Any State → Jump 전환을 추가했습니다.");
-            }
+            var runToWalk = runState.AddTransition(walkState);
+            runToWalk.AddCondition(AnimatorConditionMode.IfNot, 0, "IsRunning");
+            runToWalk.duration = 0.1f;
+            Debug.Log("✅ Run → Walk 전환을 추가했습니다.");
+            
+            // Jump → Idle 전환 (Exit Time 있음)
+            var jumpToIdle = jumpState.AddTransition(idleState);
+            jumpToIdle.duration = 0.1f;
+            jumpToIdle.hasExitTime = true;
+            jumpToIdle.exitTime = 0.8f;
+            Debug.Log("✅ Jump → Idle 전환을 추가했습니다.");
+            
+            // Any State → Jump 전환
+            var anyToJump = stateMachine.AddAnyStateTransition(jumpState);
+            anyToJump.AddCondition(AnimatorConditionMode.If, 0, "Jump");
+            anyToJump.duration = 0.1f;
+            Debug.Log("✅ Any State → Jump 전환을 추가했습니다.");
             
             // 변경사항 저장
             EditorUtility.SetDirty(controller);
             AssetDatabase.SaveAssets();
             
-            Debug.Log("Animator Controller 수정이 완료되었습니다!");
-            EditorUtility.DisplayDialog("완료", "Animator Controller 수정이 완료되었습니다!\n\n이제 Play 모드에서 애니메이션을 테스트해보세요.", "확인");
+            Debug.Log("=== Animator Controller 수정 완료 ===");
+            Debug.Log("✅ 모든 전환이 성공적으로 추가되었습니다!");
+            Debug.Log("이제 Play 모드에서 애니메이션을 테스트해보세요.");
+            
+            EditorUtility.DisplayDialog("완료", "Animator Controller 수정이 완료되었습니다!\n\n추가된 전환:\n• Idle ↔ Walk\n• Idle ↔ Run\n• Walk ↔ Run\n• Jump ↔ Idle\n• Any State → Jump\n\n이제 Play 모드에서 애니메이션을 테스트해보세요!", "확인");
         }
         
         private AnimatorState GetOrCreateState(AnimatorStateMachine stateMachine, string stateName)
@@ -346,20 +402,17 @@ public class AnimatorFixerEditor : MonoBehaviour
             // 상태 머신 가져오기
             var stateMachine = controller.layers[0].stateMachine;
             
-            // 기존 전투 상태들 모두 제거 (완전히 안전하게)
-            Debug.Log("기존 전투 상태들을 제거합니다...");
+            // 기존 전투 상태들 제거를 건너뛰고 새로 생성 (안전하게)
+            Debug.Log("=== 전투 상태들 새로 생성 시작 (기존 제거 건너뛰기) ===");
             
-            // 상태 제거를 시도하지 않고, 새로 생성할 때 덮어쓰기 방식 사용
-            Debug.Log("상태 제거를 건너뛰고 새로 생성합니다.");
+            // Any State 전환만 제거 (상태는 건드리지 않음)
+            Debug.Log($"Any State 전환 {stateMachine.anyStateTransitions.Length}개를 제거합니다.");
+            while (stateMachine.anyStateTransitions.Length > 0)
+            {
+                stateMachine.RemoveAnyStateTransition(stateMachine.anyStateTransitions[0]);
+            }
             
-            // Any State 전환 제거도 건너뛰기
-            Debug.Log("Any State 전환 제거를 건너뛰고 새로 생성합니다.");
-            
-            Debug.Log("기존 전투 상태들을 제거했습니다.");
-            
-            // 중간 저장
-            EditorUtility.SetDirty(controller);
-            AssetDatabase.SaveAssets();
+            Debug.Log("Any State 전환을 제거했습니다. 기존 상태들은 그대로 두고 새로 생성합니다.");
             
             // 전투 애니메이션 클립들 찾기 (정확한 경로)
             AnimationClip attackClip = AssetDatabase.LoadAssetAtPath<AnimationClip>("Assets/DoubleL/One Hand Up/Attack_A/OneHand_Up_Attack_1.fbx");
@@ -397,83 +450,52 @@ public class AnimatorFixerEditor : MonoBehaviour
                 Debug.Log($"대체 Death 클립: {(deathClip != null ? "찾음" : "없음")}");
             }
             
-            // 전투 상태들 생성
-            AnimatorState attackState = null;
-            AnimatorState attack1State = null;
-            AnimatorState attack2State = null;
-            AnimatorState attack3State = null;
-            AnimatorState blockState = null;
-            AnimatorState blockHitState = null;
-            AnimatorState hitState = null;
-            AnimatorState deathState = null;
-            
-            // 기존 Attack 상태는 제거 (Attack1, 2, 3 사용)
-            Debug.Log("기존 Attack 상태는 제거하고 Attack1, 2, 3만 사용합니다.");
+            // 전투 상태들 생성 또는 업데이트 (안전하게)
+            Debug.Log("=== 전투 상태들 생성/업데이트 시작 ===");
             
             // 콤보 공격 상태들 생성
-            attack1State = GetOrCreateState(stateMachine, "Attack1");
-            if (attack1State != null)
+            var attack1State = GetOrCreateState(stateMachine, "Attack1");
+            if (attack1Clip != null)
             {
-                if (attack1Clip != null)
-                {
-                    attack1State.motion = attack1Clip;
-                    Debug.Log("Attack1 상태를 생성했습니다. (애니메이션 연결됨)");
-                }
-                else
-                {
-                    Debug.LogWarning("Attack1 애니메이션 클립을 찾을 수 없습니다!");
-                }
-                attack1State.speed = 1.2f;
-                
-                // 즉시 저장
-                EditorUtility.SetDirty(controller);
-                AssetDatabase.SaveAssets();
+                attack1State.motion = attack1Clip;
+                Debug.Log("✅ Attack1 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
             }
-            
-            attack2State = GetOrCreateState(stateMachine, "Attack2");
-            if (attack2State != null)
+            else
             {
-                if (attack2Clip != null)
-                {
-                    attack2State.motion = attack2Clip;
-                    Debug.Log("Attack2 상태를 생성했습니다. (애니메이션 연결됨)");
-                }
-                else
-                {
-                    Debug.LogWarning("Attack2 애니메이션 클립을 찾을 수 없습니다!");
-                }
-                attack2State.speed = 1.2f;
-                
-                // 즉시 저장
-                EditorUtility.SetDirty(controller);
-                AssetDatabase.SaveAssets();
+                Debug.LogWarning("Attack1 애니메이션 클립을 찾을 수 없습니다!");
             }
+            attack1State.speed = 1.2f;
             
-            attack3State = GetOrCreateState(stateMachine, "Attack3");
-            if (attack3State != null)
+            var attack2State = GetOrCreateState(stateMachine, "Attack2");
+            if (attack2Clip != null)
             {
-                if (attack3Clip != null)
-                {
-                    attack3State.motion = attack3Clip;
-                    Debug.Log("Attack3 상태를 생성했습니다. (애니메이션 연결됨)");
-                }
-                else
-                {
-                    Debug.LogWarning("Attack3 애니메이션 클립을 찾을 수 없습니다!");
-                }
-                attack3State.speed = 1.2f;
-                
-                // 즉시 저장
-                EditorUtility.SetDirty(controller);
-                AssetDatabase.SaveAssets();
+                attack2State.motion = attack2Clip;
+                Debug.Log("✅ Attack2 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
             }
+            else
+            {
+                Debug.LogWarning("Attack2 애니메이션 클립을 찾을 수 없습니다!");
+            }
+            attack2State.speed = 1.2f;
             
-            // 방어 상태 생성 (Idle 상태에서 방어 모드)
-            blockState = GetOrCreateState(stateMachine, "BlockIdle");
+            var attack3State = GetOrCreateState(stateMachine, "Attack3");
+            if (attack3Clip != null)
+            {
+                attack3State.motion = attack3Clip;
+                Debug.Log("✅ Attack3 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
+            }
+            else
+            {
+                Debug.LogWarning("Attack3 애니메이션 클립을 찾을 수 없습니다!");
+            }
+            attack3State.speed = 1.2f;
+            
+            // 방어 상태 생성
+            var blockState = GetOrCreateState(stateMachine, "BlockIdle");
             if (blockIdleClip != null)
             {
                 blockState.motion = blockIdleClip;
-                Debug.Log("BlockIdle 상태를 생성했습니다. (애니메이션 연결됨)");
+                Debug.Log("✅ BlockIdle 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
                 Debug.Log($"BlockIdle 애니메이션 루프 상태: {blockIdleClip.isLooping}");
             }
             else
@@ -483,11 +505,11 @@ public class AnimatorFixerEditor : MonoBehaviour
             blockState.speed = 1.0f;
             
             // 방어 중 피해 상태 생성
-            blockHitState = GetOrCreateState(stateMachine, "BlockHit");
+            var blockHitState = GetOrCreateState(stateMachine, "BlockHit");
             if (blockHitClip != null)
             {
                 blockHitState.motion = blockHitClip;
-                Debug.Log("BlockHit 상태를 생성했습니다. (애니메이션 연결됨)");
+                Debug.Log("✅ BlockHit 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
             }
             else
             {
@@ -496,11 +518,11 @@ public class AnimatorFixerEditor : MonoBehaviour
             blockHitState.speed = 1.0f;
             
             // 피해 상태 생성
-            hitState = GetOrCreateState(stateMachine, "Hit");
+            var hitState = GetOrCreateState(stateMachine, "Hit");
             if (hitClip != null)
             {
                 hitState.motion = hitClip;
-                Debug.Log("Hit 상태를 생성했습니다. (애니메이션 연결됨)");
+                Debug.Log("✅ Hit 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
             }
             else
             {
@@ -509,11 +531,11 @@ public class AnimatorFixerEditor : MonoBehaviour
             hitState.speed = 1.0f;
             
             // 사망 상태 생성
-            deathState = GetOrCreateState(stateMachine, "Death");
+            var deathState = GetOrCreateState(stateMachine, "Death");
             if (deathClip != null)
             {
                 deathState.motion = deathClip;
-                Debug.Log("Death 상태를 생성했습니다. (애니메이션 연결됨)");
+                Debug.Log("✅ Death 상태를 생성/업데이트했습니다. (애니메이션 연결됨)");
             }
             else
             {
@@ -521,135 +543,98 @@ public class AnimatorFixerEditor : MonoBehaviour
             }
             deathState.speed = 1.0f;
             
-            // 기본 상태 찾기
+            // Idle 상태 찾기 (더 유연하게)
             AnimatorState idleState = null;
             foreach (var state in stateMachine.states)
             {
-                if (state.state.name == "HumanF@Idle01")
+                string stateName = state.state.name.ToLower();
+                if (stateName.Contains("idle") || stateName == "idle")
                 {
                     idleState = state.state;
+                    Debug.Log($"Idle 상태를 찾았습니다: {state.state.name}");
                     break;
                 }
             }
             
+            if (idleState == null)
+            {
+                Debug.LogError("Idle 상태를 찾을 수 없습니다! 기본 상태를 Idle로 생성합니다.");
+                idleState = stateMachine.AddState("Idle");
+                stateMachine.defaultState = idleState;
+            }
+            
             // 생성된 상태들 확인
-            Debug.Log($"=== 생성된 상태들 ===");
-            Debug.Log($"Attack 상태: {(attackState != null ? "생성됨" : "생성 안됨")}");
-            Debug.Log($"BlockIdle 상태: {(blockState != null ? "생성됨" : "생성 안됨")}");
-            Debug.Log($"BlockHit 상태: {(blockHitState != null ? "생성됨" : "생성 안됨")}");
-            Debug.Log($"Hit 상태: {(hitState != null ? "생성됨" : "생성 안됨")}");
-            Debug.Log($"Death 상태: {(deathState != null ? "생성됨" : "생성 안됨")}");
+            Debug.Log($"=== 생성된 전투 상태들 ===");
+            Debug.Log($"Attack1 상태: 생성됨");
+            Debug.Log($"Attack2 상태: 생성됨");
+            Debug.Log($"Attack3 상태: 생성됨");
+            Debug.Log($"BlockIdle 상태: 생성됨");
+            Debug.Log($"BlockHit 상태: 생성됨");
+            Debug.Log($"Hit 상태: 생성됨");
+            Debug.Log($"Death 상태: 생성됨");
             Debug.Log($"Idle 상태: {(idleState != null ? "찾음" : "찾지 못함")}");
             
-            // 전투 전환 추가
-            Debug.Log("전투 전환을 설정합니다...");
+            // 전투 전환 추가 (중복 방지)
+            Debug.Log("=== 전투 전환 추가 시작 (중복 방지) ===");
             
-            // Idle → Attack 전환
-            if (idleState != null && attackState != null)
-            {
-                var idleToAttack = idleState.AddTransition(attackState);
-                idleToAttack.AddCondition(AnimatorConditionMode.If, 0, "Attack");
-                idleToAttack.duration = 0.1f;
-                idleToAttack.hasExitTime = false;
-                Debug.Log("Idle → Attack 전환을 추가했습니다.");
-            }
+            // Idle → Attack1, 2, 3 전환
+            AddTransitionIfNotExists(idleState, attack1State, "Attack1", AnimatorConditionMode.If);
+            AddTransitionIfNotExists(idleState, attack2State, "Attack2", AnimatorConditionMode.If);
+            AddTransitionIfNotExists(idleState, attack3State, "Attack3", AnimatorConditionMode.If);
             
-            // Attack → Idle 전환
-            if (attackState != null && idleState != null)
-            {
-                var attackToIdle = attackState.AddTransition(idleState);
-                attackToIdle.duration = 0.1f;
-                attackToIdle.hasExitTime = true;
-                attackToIdle.exitTime = 0.9f;
-                Debug.Log("Attack → Idle 전환을 추가했습니다.");
-            }
+            // Attack1, 2, 3 → Idle 전환
+            AddTransitionIfNotExists(attack1State, idleState, null, AnimatorConditionMode.If, 0.1f, true, 0.9f);
+            AddTransitionIfNotExists(attack2State, idleState, null, AnimatorConditionMode.If, 0.1f, true, 0.9f);
+            AddTransitionIfNotExists(attack3State, idleState, null, AnimatorConditionMode.If, 0.1f, true, 0.9f);
             
             // Idle → BlockIdle 전환 (방어 모드 진입)
-            if (idleState != null && blockState != null)
-            {
-                var idleToBlock = idleState.AddTransition(blockState);
-                idleToBlock.AddCondition(AnimatorConditionMode.If, 0, "IsBlocking");
-                idleToBlock.duration = 0.1f;
-                idleToBlock.hasExitTime = false;
-                Debug.Log("Idle → BlockIdle 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(idleState, blockState, "IsBlocking", AnimatorConditionMode.If);
             
             // BlockIdle → Idle 전환 (방어 모드 해제) - 더 엄격한 조건
-            if (blockState != null && idleState != null)
-            {
-                var blockToIdle = blockState.AddTransition(idleState);
-                blockToIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "IsBlocking");
-                blockToIdle.duration = 0.5f; // 더 긴 전환 시간
-                blockToIdle.hasExitTime = true;
-                blockToIdle.exitTime = 0.8f; // 애니메이션의 80% 지점에서만 전환 가능
-                blockToIdle.interruptionSource = TransitionInterruptionSource.None; // 중단 방지
-                Debug.Log("BlockIdle → Idle 전환을 추가했습니다. (엄격한 조건)");
-            }
+            AddTransitionIfNotExists(blockState, idleState, "IsBlocking", AnimatorConditionMode.IfNot, 0.5f, true, 0.8f);
             
             // BlockIdle → BlockHit 전환 (방어 중 피해)
-            if (blockState != null && blockHitState != null)
-            {
-                var blockToBlockHit = blockState.AddTransition(blockHitState);
-                blockToBlockHit.AddCondition(AnimatorConditionMode.If, 0, "Hit");
-                blockToBlockHit.duration = 0.1f;
-                blockToBlockHit.hasExitTime = false;
-                Debug.Log("BlockIdle → BlockHit 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(blockState, blockHitState, "Hit", AnimatorConditionMode.If);
             
             // BlockHit → BlockIdle 전환 (방어 중 피해 후 방어 상태로)
-            if (blockHitState != null && blockState != null)
-            {
-                var blockHitToBlock = blockHitState.AddTransition(blockState);
-                blockHitToBlock.AddCondition(AnimatorConditionMode.If, 0, "IsBlocking");
-                blockHitToBlock.duration = 0.1f;
-                blockHitToBlock.hasExitTime = true;
-                blockHitToBlock.exitTime = 0.9f;
-                Debug.Log("BlockHit → BlockIdle 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(blockHitState, blockState, "IsBlocking", AnimatorConditionMode.If, 0.1f, true, 0.9f);
             
             // BlockHit → Idle 전환 (방어 중 피해 후 방어 해제)
-            if (blockHitState != null && idleState != null)
-            {
-                var blockHitToIdle = blockHitState.AddTransition(idleState);
-                blockHitToIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "IsBlocking");
-                blockHitToIdle.duration = 0.1f;
-                blockHitToIdle.hasExitTime = true;
-                blockHitToIdle.exitTime = 0.9f;
-                Debug.Log("BlockHit → Idle 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(blockHitState, idleState, "IsBlocking", AnimatorConditionMode.IfNot, 0.1f, true, 0.9f);
             
             // Idle → Hit 전환 (일반 피해)
-            if (idleState != null && hitState != null)
-            {
-                var idleToHit = idleState.AddTransition(hitState);
-                idleToHit.AddCondition(AnimatorConditionMode.If, 0, "Hit");
-                idleToHit.duration = 0.1f;
-                idleToHit.hasExitTime = false;
-                Debug.Log("Idle → Hit 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(idleState, hitState, "Hit", AnimatorConditionMode.If);
             
             // Hit → Idle 전환 (피해 후 기본 상태로)
-            if (hitState != null && idleState != null)
-            {
-                var hitToIdle = hitState.AddTransition(idleState);
-                hitToIdle.duration = 0.1f;
-                hitToIdle.hasExitTime = true;
-                hitToIdle.exitTime = 0.9f;
-                Debug.Log("Hit → Idle 전환을 추가했습니다.");
-            }
+            AddTransitionIfNotExists(hitState, idleState, null, AnimatorConditionMode.If, 0.1f, true, 0.9f);
             
-            // Any State → Death 전환
+            // Any State → Death 전환 (수동으로 추가)
             if (deathState != null)
             {
-                var anyToDeath = stateMachine.AddAnyStateTransition(deathState);
-                anyToDeath.AddCondition(AnimatorConditionMode.If, 0, "Death");
-                anyToDeath.duration = 0.1f;
-                anyToDeath.hasExitTime = false;
-                Debug.Log("Any State → Death 전환을 추가했습니다.");
+                // Any State 전환 중복 체크
+                bool hasAnyToDeath = false;
+                foreach (var transition in stateMachine.anyStateTransitions)
+                {
+                    if (transition.destinationState == deathState)
+                    {
+                        hasAnyToDeath = true;
+                        break;
+                    }
+                }
+                
+                if (!hasAnyToDeath)
+                {
+                    var anyToDeath = stateMachine.AddAnyStateTransition(deathState);
+                    anyToDeath.AddCondition(AnimatorConditionMode.If, 0, "Death");
+                    anyToDeath.duration = 0.1f;
+                    anyToDeath.hasExitTime = false;
+                    Debug.Log("✅ Any State → Death 전환을 추가했습니다.");
+                }
+                else
+                {
+                    Debug.Log("Any State → Death 전환이 이미 존재합니다. 건너뜁니다.");
+                }
             }
-            
-            // 콤보 공격 상태들 전환 추가
-            AddComboTransitions(stateMachine, attack1State, attack2State, attack3State);
             
             // 변경사항 즉시 저장
             EditorUtility.SetDirty(controller);
@@ -731,6 +716,66 @@ public class AnimatorFixerEditor : MonoBehaviour
             Debug.Log("   이는 Unity Animator의 정상적인 동작입니다!");
             
             Debug.Log("콤보 공격 상태들 전환이 완료되었습니다!");
+        }
+        
+        // 트랜지션 중복 체크 메서드
+        private bool HasTransition(AnimatorState fromState, AnimatorState toState, string conditionParameter = null)
+        {
+            if (fromState == null || toState == null) return false;
+            
+            foreach (var transition in fromState.transitions)
+            {
+                if (transition.destinationState == toState)
+                {
+                    // 조건이 지정되지 않았으면 무조건 중복으로 간주
+                    if (string.IsNullOrEmpty(conditionParameter))
+                    {
+                        return true;
+                    }
+                    
+                    // 조건이 지정되었으면 조건도 확인
+                    foreach (var condition in transition.conditions)
+                    {
+                        if (condition.parameter == conditionParameter)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        // 안전한 트랜지션 추가 메서드
+        private void AddTransitionIfNotExists(AnimatorState fromState, AnimatorState toState, string conditionParameter, AnimatorConditionMode conditionMode, float duration = 0.1f, bool hasExitTime = false, float exitTime = 0.9f)
+        {
+            if (fromState == null || toState == null)
+            {
+                Debug.LogError($"트랜지션 추가 실패 - From: {(fromState != null ? "있음" : "없음")}, To: {(toState != null ? "있음" : "없음")}");
+                return;
+            }
+            
+            // 중복 체크
+            if (HasTransition(fromState, toState, conditionParameter))
+            {
+                Debug.Log($"트랜지션 {fromState.name} → {toState.name} (조건: {conditionParameter})이 이미 존재합니다. 건너뜁니다.");
+                return;
+            }
+            
+            // 트랜지션 추가
+            var transition = fromState.AddTransition(toState);
+            if (!string.IsNullOrEmpty(conditionParameter))
+            {
+                transition.AddCondition(conditionMode, 0, conditionParameter);
+            }
+            transition.duration = duration;
+            transition.hasExitTime = hasExitTime;
+            if (hasExitTime)
+            {
+                transition.exitTime = exitTime;
+            }
+            
+            Debug.Log($"✅ 트랜지션 {fromState.name} → {toState.name} (조건: {conditionParameter})을 추가했습니다.");
         }
         
         // 파라미터 중복 추가 방지 메서드

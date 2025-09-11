@@ -239,7 +239,6 @@ public class InventoryUI : MonoBehaviour
             if (tooltipField != null && tooltip != null)
             {
                 tooltipField.SetValue(slotUI, tooltip);
-                Debug.Log($"슬롯 {i}에 툴팁 연결 완료");
             }
             else
             {
