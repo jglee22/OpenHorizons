@@ -60,15 +60,12 @@ public class ThirdPersonCamera : MonoBehaviour
                      if (cameraTarget != null)
                      {
                          target = cameraTarget;
-                         Debug.Log($"카메라 타겟을 CameraTarget으로 설정: {cameraTarget.name}");
                      }
                      else
                      {
                          target = player.transform;
-                         Debug.Log("CameraTarget을 찾을 수 없어 Player를 카메라 타겟으로 설정");
                      }
                  }
-                 Debug.Log($"플레이어 타겟 설정됨: {player.name}");
              }
             else
             {
@@ -100,9 +97,6 @@ public class ThirdPersonCamera : MonoBehaviour
             
             // 한 프레임 후 한 번 더 확인
             StartCoroutine(DelayedPositionCheck());
-            
-            Debug.Log($"카메라 초기 위치 설정: 플레이어 뒤 {currentZoom} 유닛, 높이 {offset.y}");
-            Debug.Log($"카메라 위치: {transform.position}, 플레이어 위치: {target.position}");
         }
         else
         {
@@ -264,8 +258,6 @@ public class ThirdPersonCamera : MonoBehaviour
         // 즉시 위치 설정 (lerp 없이)
         transform.position = behindPosition;
         transform.LookAt(target.position);
-        
-        Debug.Log($"카메라 위치 강제 조정: {transform.position}");
     }
     
     /// <summary>

@@ -4,8 +4,6 @@ using UnityEngine.AI;
 public class EnemyAI : MonoBehaviour
 {
     [Header("적 설정")]
-    public float maxHealth = 50f;
-    public float currentHealth;
     public float attackDamage = 15f;
     public float attackRange = 1.5f;
     public float detectionRange = 8f;
@@ -14,7 +12,7 @@ public class EnemyAI : MonoBehaviour
     
     [Header("AI 설정")]
     public Transform player;
-    public LayerMask playerLayer = 1 << 6; // Player 레이어
+    public LayerMask playerLayer = 1 << 7; // Player 레이어 (7번)
     public float rotationSpeed = 5f;
     
     [Header("애니메이션")]
@@ -25,6 +23,11 @@ public class EnemyAI : MonoBehaviour
     public AudioClip[] attackSounds;
     public AudioClip[] hitSounds;
     public AudioClip[] deathSounds;
+    
+    [Header("피격 이펙트")]
+    public GameObject hitEffectPrefab; // 피격 이펙트 프리팹
+    public Transform hitEffectPoint; // 피격 이펙트 생성 위치
+    public float hitFlashDuration = 0.2f; // 피격 시 빨간색 깜빡임 시간
     
     // AI 상태
     public enum EnemyState
@@ -40,13 +43,19 @@ public class EnemyAI : MonoBehaviour
     
     // 내부 변수
     private NavMeshAgent navAgent;
+    private EnemyHealth enemyHealth;
     private float lastAttackTime = 0f;
     private Vector3 startPosition;
-    private bool isDead = false;
+    private bool isAttacking = false;
+    private float attackStartTime = 0f;
+    
+    // 피격 피드백 변수
+    private Renderer[] enemyRenderers;
+    private Color[] originalColors;
+    private bool isHitFlashing = false;
     
     // 애니메이션 해시
     private readonly int isWalkingHash = Animator.StringToHash("IsWalking");
-    private readonly int isRunningHash = Animator.StringToHash("IsRunning");
     private readonly int attackTriggerHash = Animator.StringToHash("Attack");
     private readonly int hitTriggerHash = Animator.StringToHash("Hit");
     private readonly int deathTriggerHash = Animator.StringToHash("Death");
@@ -87,13 +96,26 @@ public class EnemyAI : MonoBehaviour
             }
         }
         
+        // EnemyHealth 컴포넌트 찾기
+        enemyHealth = GetComponent<EnemyHealth>();
+        if (enemyHealth == null)
+        {
+            Debug.LogError("EnemyHealth 컴포넌트를 찾을 수 없습니다!");
+        }
+        else
+        {
+            // EnemyHealth 이벤트 구독
+            enemyHealth.OnEnemyDeath += OnEnemyDeath;
+        }
+        
         // NavMeshAgent 설정
         navAgent.speed = moveSpeed;
         navAgent.stoppingDistance = attackRange * 0.8f;
         
-        // 체력 초기화
-        currentHealth = maxHealth;
         startPosition = transform.position;
+        
+        // 렌더러 초기화 (피격 피드백용)
+        InitializeRenderers();
         
         // 초기 상태 설정
         ChangeState(EnemyState.Idle);
@@ -101,7 +123,7 @@ public class EnemyAI : MonoBehaviour
     
     void Update()
     {
-        if (isDead) return;
+        if (enemyHealth != null && enemyHealth.isDead) return;
         
         UpdateAI();
         UpdateAnimations();
@@ -194,6 +216,9 @@ public class EnemyAI : MonoBehaviour
     
     void HandleAttackingState(float distanceToPlayer)
     {
+        // 공격 중에는 이동 정지
+        navAgent.ResetPath();
+        
         // 플레이어를 바라보기
         Vector3 direction = (player.position - transform.position).normalized;
         direction.y = 0;
@@ -201,6 +226,17 @@ public class EnemyAI : MonoBehaviour
         {
             Quaternion targetRotation = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        }
+        
+        // 공격 애니메이션이 진행 중이면 기다림
+        if (isAttacking)
+        {
+            // 공격 애니메이션 완료 확인 (약 1초 후)
+            if (Time.time - attackStartTime >= 1.0f)
+            {
+                isAttacking = false;
+            }
+            return;
         }
         
         // 공격 범위를 벗어나면 추적으로 돌아감
@@ -255,6 +291,8 @@ public class EnemyAI : MonoBehaviour
     void Attack()
     {
         lastAttackTime = Time.time;
+        attackStartTime = Time.time;
+        isAttacking = true;
         
         // 공격 애니메이션
         if (animator != null)
@@ -281,10 +319,10 @@ public class EnemyAI : MonoBehaviour
     
     public void TakeDamage(float damage)
     {
-        if (isDead) return;
+        if (enemyHealth == null || enemyHealth.isDead) return;
         
-        currentHealth -= damage;
-        currentHealth = Mathf.Max(0, currentHealth);
+        // EnemyHealth를 통해 데미지 처리
+        enemyHealth.TakeDamage(damage);
         
         // 피해 애니메이션
         if (animator != null)
@@ -299,24 +337,23 @@ public class EnemyAI : MonoBehaviour
             audioSource.PlayOneShot(randomClip);
         }
         
+        // 피격 이펙트 생성
+        CreateHitEffect();
+        
+        // 피격 시 빨간색 깜빡임
+        StartCoroutine(HitFlashEffect());
+        
         // 피해를 받으면 플레이어를 추적
         if (currentState == EnemyState.Idle || currentState == EnemyState.Patrolling)
         {
             ChangeState(EnemyState.Chasing);
         }
         
-        // 사망 확인
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
-        
-        Debug.Log($"적이 {damage} 데미지를 받았습니다! 남은 체력: {currentHealth}");
+        Debug.Log($"적이 {damage} 데미지를 받았습니다! 남은 체력: {enemyHealth.currentHealth}");
     }
     
-    void Die()
+    public void OnEnemyDeath()
     {
-        isDead = true;
         currentState = EnemyState.Dead;
         
         // 사망 애니메이션
@@ -345,10 +382,16 @@ public class EnemyAI : MonoBehaviour
             col.enabled = false;
         }
         
-        // 5초 후 오브젝트 파괴
-        Destroy(gameObject, 5f);
-        
         Debug.Log("적이 사망했습니다!");
+    }
+    
+    void OnDestroy()
+    {
+        // 이벤트 구독 해제
+        if (enemyHealth != null)
+        {
+            enemyHealth.OnEnemyDeath -= OnEnemyDeath;
+        }
     }
     
     void UpdateAnimations()
@@ -360,11 +403,81 @@ public class EnemyAI : MonoBehaviour
         animator.SetFloat(speedHash, speed);
         
         // 상태에 따른 애니메이션
-        bool isWalking = currentState == EnemyState.Patrolling;
-        bool isRunning = currentState == EnemyState.Chasing;
+        bool isWalking = (currentState == EnemyState.Patrolling || currentState == EnemyState.Chasing) && 
+                        (currentState != EnemyState.Attacking) && 
+                        (currentState != EnemyState.Dead);
         
         animator.SetBool(isWalkingHash, isWalking);
-        animator.SetBool(isRunningHash, isRunning);
+    }
+    
+    /// <summary>
+    /// 렌더러 초기화 (피격 피드백용)
+    /// </summary>
+    void InitializeRenderers()
+    {
+        enemyRenderers = GetComponentsInChildren<Renderer>();
+        originalColors = new Color[enemyRenderers.Length];
+        
+        for (int i = 0; i < enemyRenderers.Length; i++)
+        {
+            if (enemyRenderers[i].material != null)
+            {
+                originalColors[i] = enemyRenderers[i].material.color;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 피격 이펙트 생성
+    /// </summary>
+    void CreateHitEffect()
+    {
+        if (hitEffectPrefab != null)
+        {
+            Vector3 effectPosition = hitEffectPoint != null ? hitEffectPoint.position : transform.position + Vector3.up;
+            GameObject effect = Instantiate(hitEffectPrefab, effectPosition, Quaternion.identity);
+            
+            // 이펙트 자동 삭제 (3초 후)
+            Destroy(effect, 3f);
+        }
+        else
+        {
+            // 기본 이펙트 (파티클 시스템 없이)
+            Debug.Log("피격 이펙트!");
+        }
+    }
+    
+    /// <summary>
+    /// 피격 시 빨간색 깜빡임 효과
+    /// </summary>
+    System.Collections.IEnumerator HitFlashEffect()
+    {
+        if (isHitFlashing || enemyRenderers == null) yield break;
+        
+        isHitFlashing = true;
+        
+        // 빨간색으로 변경
+        for (int i = 0; i < enemyRenderers.Length; i++)
+        {
+            if (enemyRenderers[i].material != null)
+            {
+                enemyRenderers[i].material.color = Color.red;
+            }
+        }
+        
+        // 깜빡임 시간만큼 대기
+        yield return new WaitForSeconds(hitFlashDuration);
+        
+        // 원래 색상으로 복원
+        for (int i = 0; i < enemyRenderers.Length; i++)
+        {
+            if (enemyRenderers[i].material != null)
+            {
+                enemyRenderers[i].material.color = originalColors[i];
+            }
+        }
+        
+        isHitFlashing = false;
     }
     
     // 감지 범위 시각화

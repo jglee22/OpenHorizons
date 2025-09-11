@@ -207,18 +207,26 @@ public class PlayerController : MonoBehaviour
             return;
         }
         
-        // 입력 기반으로 이동 상태 확인
+        // 입력 기반으로 이동 상태 확인 (더 엄격한 임계값)
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
-        bool hasInput = Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f;
+        bool hasInput = Mathf.Abs(horizontal) > 0.2f || Mathf.Abs(vertical) > 0.2f;
         
         // 이동 속도 계산 (입력 기반으로 추정)
         float speed = hasInput ? (Input.GetKey(KeyCode.LeftShift) ? runSpeed : moveSpeed) : 0f;
         
-        // 이동 상태 확인 (입력만으로 판단)
+        // 이동 상태 확인 (입력만으로 판단, 더 즉각적인 반응)
         bool isMoving = hasInput;
         bool isRunning = Input.GetKey(KeyCode.LeftShift) && isMoving;
         bool isWalking = isMoving && !isRunning;
+        
+        // 입력이 없으면 즉시 정지 상태로 설정
+        if (!hasInput)
+        {
+            isMoving = false;
+            isRunning = false;
+            isWalking = false;
+        }
         
         // 점프 상태 확인 (점프 중에는 다른 애니메이션 무시)
         bool isJumping = !isGrounded && velocity.y > 0;

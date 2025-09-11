@@ -16,11 +16,16 @@ public class PlayerCombatController : MonoBehaviour
     public int maxComboCount = 3; // 최대 콤보 수
     public float comboResetTime = 2f; // 콤보 리셋 시간
     public float comboDamageMultiplier = 1.2f; // 콤보 데미지 배수
+    public float attackHitDelay = 0.4f; // 공격 히트 지연 시간
     
     [Header("무기 설정")]
     public Transform weaponHolder;
     public Weapon currentWeapon;
-    public LayerMask enemyLayer = 1 << 8; // Enemy 레이어
+    public LayerMask enemyLayer = 1 << 9; // Enemy 레이어 (9번)
+    
+    [Header("무기 콜라이더")]
+    public WeaponCollider weaponCollider; // 무기 콜라이더 참조
+    public WeaponCollider fistCollider; // 주먹 콜라이더 참조
     
     [Header("애니메이션")]
     public Animator animator;
@@ -34,6 +39,7 @@ public class PlayerCombatController : MonoBehaviour
     private bool isDead = false;
     private float lastAttackTime = 0f;
     private float blockStartTime = 0f;
+    private bool hasAttacked = false; // 중복 공격 방지
     
     // 콤보 시스템 변수
     private int currentComboCount = 0;
@@ -91,6 +97,18 @@ public class PlayerCombatController : MonoBehaviour
             weaponHolder = weaponHolderObj.transform;
         }
         
+        // 무기 콜라이더 자동 찾기
+        if (weaponCollider == null)
+        {
+            weaponCollider = GetComponentInChildren<WeaponCollider>();
+        }
+        
+        if (fistCollider == null)
+        {
+            // 주먹 콜라이더 자동 생성
+            CreateFistCollider();
+        }
+        
         // HealthBar UI 자동 찾기
         if (healthBarUI == null)
         {
@@ -120,6 +138,7 @@ public class PlayerCombatController : MonoBehaviour
         // 공격 입력 (마우스 왼쪽 클릭) - 콤보 시스템
         if (Input.GetMouseButtonDown(0) && CanAttack())
         {
+            Debug.Log($"공격 입력 감지! isAttacking: {isAttacking}, lastAttackTime: {lastAttackTime}, currentTime: {Time.time}");
             PerformComboAttack();
         }
         
@@ -234,14 +253,22 @@ public class PlayerCombatController : MonoBehaviour
         // 공격 범위 내 콜라이더 찾기
         Collider[] enemies = Physics.OverlapSphere(transform.position + transform.forward * attackRange, attackRange, enemyLayer);
         
+        Debug.Log($"맨손 공격 범위 내 적 수: {enemies.Length}");
+        
         foreach (Collider enemy in enemies)
         {
+            Debug.Log($"맨손 공격으로 발견된 적: {enemy.name}");
+            
             // 적에게 데미지 주기
             EnemyAI enemyAI = enemy.GetComponent<EnemyAI>();
             if (enemyAI != null)
             {
                 enemyAI.TakeDamage(attackDamage);
                 Debug.Log($"적에게 {attackDamage} 데미지를 입혔습니다!");
+            }
+            else
+            {
+                Debug.LogWarning($"EnemyAI 컴포넌트를 찾을 수 없습니다: {enemy.name}");
             }
         }
     }
@@ -308,8 +335,17 @@ public class PlayerCombatController : MonoBehaviour
     // 공격 범위 시각화
     void OnDrawGizmosSelected()
     {
+        // 콤보 공격 범위 (원형)
         Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+        
+        // 맨손 공격 범위 (앞쪽)
+        Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position + transform.forward * attackRange, attackRange);
+        
+        // 공격 방향 표시
+        Gizmos.color = Color.green;
+        Gizmos.DrawRay(transform.position, transform.forward * attackRange * 2);
     }
     
     // 공격 상태 확인 (다른 스크립트에서 사용)
@@ -350,6 +386,30 @@ public class PlayerCombatController : MonoBehaviour
         if (currentWeapon != null)
         {
             currentWeapon.Equip(this);
+            
+            // 무기의 WeaponCollider 찾기
+            weaponCollider = currentWeapon.GetComponent<WeaponCollider>();
+            if (weaponCollider != null)
+            {
+                weaponCollider.enemyLayer = enemyLayer;
+                weaponCollider.damage = attackDamage;
+                Debug.Log($"무기 WeaponCollider를 찾았습니다: {weaponCollider.gameObject.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"무기 {currentWeapon.weaponName}에 WeaponCollider가 없습니다!");
+            }
+            
+            // 무기 장착 시 FistCollider 비활성화
+            if (fistCollider != null)
+            {
+                fistCollider.gameObject.SetActive(false);
+                Debug.Log("무기 장착으로 인해 FistCollider 비활성화");
+            }
+        }
+        else
+        {
+            weaponCollider = null; // 맨손일 때는 무기 콜라이더 비활성화
         }
         
         Debug.Log($"무기를 장착했습니다: {weapon?.weaponName ?? "맨손"}");
@@ -363,6 +423,16 @@ public class PlayerCombatController : MonoBehaviour
             currentWeapon.Unequip();
             currentWeapon = null;
         }
+        
+        // 무기 해제 시 FistCollider 활성화
+        if (fistCollider != null)
+        {
+            fistCollider.gameObject.SetActive(true);
+            Debug.Log("무기 해제로 인해 FistCollider 활성화");
+        }
+        
+        // 무기 콜라이더 참조 해제
+        weaponCollider = null;
         
         Debug.Log("무기를 해제했습니다!");
     }
@@ -380,6 +450,13 @@ public class PlayerCombatController : MonoBehaviour
     // 콤보 공격 시스템
     void PerformComboAttack()
     {
+        // 이미 공격 중이면 무시
+        if (isAttacking)
+        {
+            Debug.Log("이미 공격 중이므로 무시합니다!");
+            return;
+        }
+        
         // 콤보 카운트 증가
         currentComboCount++;
         if (currentComboCount > maxComboCount)
@@ -387,10 +464,13 @@ public class PlayerCombatController : MonoBehaviour
             currentComboCount = 1; // 최대 콤보 도달 시 1로 리셋
         }
         
-        // 공격 상태 설정
+        // 공격 상태 설정 (즉시 설정)
         isAttacking = true;
+        hasAttacked = false; // 공격 플래그 리셋
         lastAttackTime = Time.time;
         lastComboTime = Time.time;
+        
+        Debug.Log($"공격 시작! 콤보: {currentComboCount}, isAttacking: {isAttacking}");
         
         // 콤보에 따른 애니메이션 트리거 설정
         switch (currentComboCount)
@@ -417,6 +497,23 @@ public class PlayerCombatController : MonoBehaviour
         // 콤보 데미지 계산
         float comboDamage = attackDamage * Mathf.Pow(comboDamageMultiplier, currentComboCount - 1);
         
+        // 무기 콜라이더에 데미지 설정
+        WeaponCollider activeCollider = GetActiveWeaponCollider();
+        Debug.Log($"GetActiveWeaponCollider 결과: {activeCollider?.gameObject.name ?? "null"}");
+        
+        if (activeCollider != null)
+        {
+            activeCollider.SetDamage(comboDamage);
+            activeCollider.enemyLayer = enemyLayer; // 레이어 마스크 전달
+            activeCollider.StartAttack();
+            Debug.Log($"무기 콜라이더 활성화! 무기: {activeCollider.gameObject.name}, 데미지: {comboDamage}, 레이어: {enemyLayer}, 위치: {activeCollider.transform.position}");
+        }
+        else
+        {
+            Debug.LogWarning("활성 무기 콜라이더를 찾을 수 없습니다! 공격을 실행할 수 없습니다.");
+            Debug.Log($"weaponCollider: {weaponCollider?.gameObject.name ?? "null"}, fistCollider: {fistCollider?.gameObject.name ?? "null"}, currentWeapon: {currentWeapon?.weaponName ?? "null"}");
+        }
+        
         // 공격 사운드 재생
         if (AudioManager.Instance != null)
         {
@@ -426,28 +523,71 @@ public class PlayerCombatController : MonoBehaviour
         
         Debug.Log($"콤보 공격! {currentComboCount}/{maxComboCount} - 데미지: {comboDamage}");
         
-        // 실제 공격 실행
-        ExecuteAttack(comboDamage);
-        
         // 공격 애니메이션 완료 후 상태 리셋
         StartCoroutine(ResetAttackState());
     }
     
-    // 실제 공격 실행
-    void ExecuteAttack(float damage)
+    // 실제 공격 실행 (WeaponCollider에서 처리하므로 제거됨)
+    // void ExecuteAttack(float damage) - WeaponCollider의 OnTriggerEnter에서 처리
+    
+    // 애니메이션 이벤트용 공격 실행 (애니메이션 중간에 호출)
+    // Rio 오브젝트의 AnimationEventReceiver에서 호출됨
+    public void OnAttackHit()
     {
-        // 공격 범위 내의 적 찾기
-        Collider[] enemies = Physics.OverlapSphere(transform.position, attackRange, enemyLayer);
+        // WeaponCollider의 OnTriggerEnter에서 처리하므로 여기서는 아무것도 하지 않음
+        Debug.Log("OnAttackHit 호출됨 - WeaponCollider에서 처리 중");
+    }
+    
+    // 지연된 공격 실행 (WeaponCollider에서 처리하므로 제거됨)
+    // System.Collections.IEnumerator DelayedAttack - WeaponCollider의 OnTriggerEnter에서 처리
+    
+    // 주먹 콜라이더 자동 생성
+    void CreateFistCollider()
+    {
+        // 주먹 콜라이더 오브젝트 생성
+        GameObject fistColliderObj = new GameObject("FistCollider");
+        fistColliderObj.transform.SetParent(transform);
+        fistColliderObj.transform.localPosition = new Vector3(0.5f, 1.2f, 0.8f); // 플레이어 앞쪽
         
-        foreach (Collider enemy in enemies)
+        // Rigidbody 추가 (OnTriggerEnter 작동을 위해 필요)
+        Rigidbody rb = fistColliderObj.AddComponent<Rigidbody>();
+        rb.isKinematic = true; // 물리 시뮬레이션 비활성화
+        
+        // 콜라이더 추가
+        BoxCollider boxCollider = fistColliderObj.AddComponent<BoxCollider>();
+        boxCollider.isTrigger = true;
+        
+        // WeaponCollider 스크립트 추가
+        fistCollider = fistColliderObj.AddComponent<WeaponCollider>();
+        fistCollider.damage = attackDamage;
+        fistCollider.enemyLayer = enemyLayer;
+        
+        Debug.Log("주먹 콜라이더를 자동으로 생성했습니다! (Rigidbody 포함)");
+    }
+    
+    // 활성 무기 콜라이더 가져오기
+    public WeaponCollider GetActiveWeaponCollider()
+    {
+        // 무기가 있으면 무기 콜라이더, 없으면 주먹 콜라이더
+        if (currentWeapon != null && weaponCollider != null)
         {
-            // 적에게 데미지 주기
-            EnemyHealth enemyHealth = enemy.GetComponent<EnemyHealth>();
-            if (enemyHealth != null)
-            {
-                enemyHealth.TakeDamage(damage);
-                Debug.Log($"적에게 {damage} 데미지를 입혔습니다!");
-            }
+            return weaponCollider;
+        }
+        else if (fistCollider != null && fistCollider.gameObject.activeInHierarchy)
+        {
+            return fistCollider;
+        }
+        
+        return null;
+    }
+    
+    // 공격 종료 (애니메이션 이벤트에서 호출)
+    public void OnAttackEnd()
+    {
+        WeaponCollider activeCollider = GetActiveWeaponCollider();
+        if (activeCollider != null)
+        {
+            activeCollider.EndAttack();
         }
     }
     
@@ -457,7 +597,15 @@ public class PlayerCombatController : MonoBehaviour
         // 공격 애니메이션 시간만큼 대기 (대략 1초)
         yield return new WaitForSeconds(1f);
         
+        // 무기 콜라이더 공격 종료
+        WeaponCollider activeCollider = GetActiveWeaponCollider();
+        if (activeCollider != null)
+        {
+            activeCollider.EndAttack();
+        }
+        
         isAttacking = false;
+        hasAttacked = false; // 공격 플래그 리셋
         animator.SetBool(isAttackingHash, false);
     }
 }

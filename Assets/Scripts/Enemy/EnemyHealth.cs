@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 public class EnemyHealth : MonoBehaviour
 {
@@ -9,6 +10,10 @@ public class EnemyHealth : MonoBehaviour
     [Header("사망 설정")]
     public bool isDead = false;
     public float deathDelay = 2f;
+    
+    [Header("이벤트")]
+    public Action<float, float> OnHealthChanged; // (현재체력, 최대체력)
+    public Action OnEnemyDeath;
     
     void Start()
     {
@@ -21,6 +26,11 @@ public class EnemyHealth : MonoBehaviour
         if (isDead) return;
         
         currentHealth -= damage;
+        currentHealth = Mathf.Max(0, currentHealth);
+        
+        // 체력 변경 이벤트 발생
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        
         Debug.Log($"적이 {damage} 데미지를 받았습니다! 남은 체력: {currentHealth}");
         
         if (currentHealth <= 0)
@@ -35,6 +45,10 @@ public class EnemyHealth : MonoBehaviour
         if (isDead) return;
         
         isDead = true;
+        
+        // 사망 이벤트 발생
+        OnEnemyDeath?.Invoke();
+        
         Debug.Log("적이 사망했습니다!");
         
         // 사망 애니메이션 재생 (있다면)
