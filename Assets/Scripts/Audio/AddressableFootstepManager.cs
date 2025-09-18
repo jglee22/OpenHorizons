@@ -14,64 +14,64 @@ namespace AudioSystem
         [Header("어드레서블 설정")]
         [SerializeField] private bool loadOnStart = true;
         [SerializeField] private bool enableCaching = true;
-        
+
         [Header("현재 지형")]
         [SerializeField] private GroundType currentGroundType = GroundType.Grass;
-        
+
         [Header("사운드 설정")]
         [SerializeField] private bool enableRandomVariation = true;
         [SerializeField] private float pitchVariation = 0.1f;
         [SerializeField] private float volumeVariation = 0.1f;
-        
+
         [Header("어드레서블 레이블")]
         [SerializeField] private string grassWalkLabel = "footstep_grass_walk";
         [SerializeField] private string grassRunLabel = "footstep_grass_run";
         [SerializeField] private string grassJumpLabel = "footstep_grass_jump";
-        
+
         [SerializeField] private string dirtWalkLabel = "footstep_dirt_walk";
         [SerializeField] private string dirtRunLabel = "footstep_dirt_run";
         [SerializeField] private string dirtLandLabel = "footstep_dirt_land";
-        
+
         [SerializeField] private string gravelWalkLabel = "footstep_gravel_walk";
         [SerializeField] private string gravelRunLabel = "footstep_gravel_run";
         [SerializeField] private string gravelJumpLabel = "footstep_gravel_jump";
-        
+
         [SerializeField] private string metalWalkLabel = "footstep_metal_walk";
         [SerializeField] private string metalRunLabel = "footstep_metal_run";
         [SerializeField] private string metalJumpLabel = "footstep_metal_jump";
-        
+
         [SerializeField] private string woodWalkLabel = "footstep_wood_walk";
         [SerializeField] private string woodRunLabel = "footstep_wood_run";
         [SerializeField] private string woodJumpLabel = "footstep_wood_jump";
-        
+
         [SerializeField] private string stoneWalkLabel = "footstep_stone_walk";
         [SerializeField] private string stoneRunLabel = "footstep_stone_run";
         [SerializeField] private string stoneJumpLabel = "footstep_stone_jump";
-        
+
         [SerializeField] private string sandWalkLabel = "footstep_sand_walk";
         [SerializeField] private string sandRunLabel = "footstep_sand_run";
         [SerializeField] private string sandJumpLabel = "footstep_sand_jump";
-        
+
         [SerializeField] private string snowWalkLabel = "footstep_snow_walk";
         [SerializeField] private string snowRunLabel = "footstep_snow_run";
         [SerializeField] private string snowJumpLabel = "footstep_snow_jump";
-        
+
         [SerializeField] private string waterWalkLabel = "footstep_water_walk";
         [SerializeField] private string waterRunLabel = "footstep_water_run";
         [SerializeField] private string waterJumpLabel = "footstep_water_jump";
-        
+
         [SerializeField] private string tileWalkLabel = "footstep_tile_walk";
         [SerializeField] private string tileRunLabel = "footstep_tile_run";
         [SerializeField] private string tileJumpLabel = "footstep_tile_jump";
-        
+
         [SerializeField] private string mudWalkLabel = "footstep_mud_walk";
         [SerializeField] private string mudRunLabel = "footstep_mud_run";
         [SerializeField] private string mudJumpLabel = "footstep_mud_jump";
-        
+
         [SerializeField] private string leavesWalkLabel = "footstep_leaves_walk";
         [SerializeField] private string leavesRunLabel = "footstep_leaves_run";
         [SerializeField] private string leavesJumpLabel = "footstep_leaves_jump";
-        
+
         public enum GroundType
         {
             Grass,
@@ -87,53 +87,50 @@ namespace AudioSystem
             Mud,
             Leaves
         }
-        
+
         // 캐시된 사운드 클립들
         private Dictionary<string, List<AudioClip>> soundCache = new Dictionary<string, List<AudioClip>>();
-        
+
         // 로딩 상태
         private bool isInitialized = false;
         private int loadingCount = 0;
         private int totalLoadingCount = 0;
-        
-        private void Start()
+
+        private async void Start()
         {
             if (loadOnStart)
             {
-                InitializeFootstepSounds();
+                await InitializeFootstepSounds();
             }
         }
-        
+
         /// <summary>
         /// 발자국 사운드 초기화
         /// </summary>
-        public async void InitializeFootstepSounds()
+        public async System.Threading.Tasks.Task InitializeFootstepSounds()
         {
             Debug.Log("AddressableFootstepManager: 발자국 사운드 초기화 시작...");
-            
+
             isInitialized = false;
             loadingCount = 0;
             totalLoadingCount = 0;
-            
+
             // 모든 레이블 수집
             List<string> allLabels = GetAllLabels();
             totalLoadingCount = allLabels.Count;
-            
+
             // 병렬로 모든 사운드 로드
-            List<Task> loadTasks = new List<Task>();
-            
+            var loadTasks = new List<System.Threading.Tasks.Task>();
             foreach (string label in allLabels)
-            {
                 loadTasks.Add(LoadSoundsByLabel(label));
-            }
-            
-            // 모든 로딩 완료 대기
-            await Task.WhenAll(loadTasks);
-            
+
+            // Task.WhenAll → System.Threading.Tasks.Task.WhenAll
+            await System.Threading.Tasks.Task.WhenAll(loadTasks);
+
             isInitialized = true;
             Debug.Log($"AddressableFootstepManager: 발자국 사운드 초기화 완료! ({loadingCount}/{totalLoadingCount})");
         }
-        
+
         private List<string> GetAllLabels()
         {
             return new List<string>
@@ -152,14 +149,14 @@ namespace AudioSystem
                 leavesWalkLabel, leavesRunLabel, leavesJumpLabel
             };
         }
-        
-        private async Task LoadSoundsByLabel(string label)
+
+        private async System.Threading.Tasks.Task LoadSoundsByLabel(string label)
         {
             try
             {
                 var handle = Addressables.LoadAssetsAsync<AudioClip>(label, null);
                 var result = await handle.Task;
-                
+
                 if (result != null && result.Count > 0)
                 {
                     soundCache[label] = new List<AudioClip>(result);
@@ -170,7 +167,7 @@ namespace AudioSystem
                 {
                     Debug.LogWarning($"AddressableFootstepManager: {label}에서 사운드를 찾을 수 없습니다.");
                 }
-                
+
                 // 메모리 해제 (선택사항)
                 if (!enableCaching)
                 {
@@ -182,7 +179,7 @@ namespace AudioSystem
                 Debug.LogError($"AddressableFootstepManager: {label} 로드 실패 - {e.Message}");
             }
         }
-        
+
         /// <summary>
         /// 발자국 사운드 재생
         /// </summary>
@@ -193,11 +190,11 @@ namespace AudioSystem
                 Debug.LogWarning("AddressableFootstepManager: 아직 초기화되지 않았습니다!");
                 return;
             }
-            
+
             string label = GetFootstepLabel(isRunning);
             PlayRandomSound(label);
         }
-        
+
         /// <summary>
         /// 점프 사운드 재생
         /// </summary>
@@ -208,11 +205,11 @@ namespace AudioSystem
                 Debug.LogWarning("AddressableFootstepManager: 아직 초기화되지 않았습니다!");
                 return;
             }
-            
+
             string label = GetJumpLabel();
             PlayRandomSound(label);
         }
-        
+
         /// <summary>
         /// 착지 사운드 재생
         /// </summary>
@@ -223,11 +220,11 @@ namespace AudioSystem
                 Debug.LogWarning("AddressableFootstepManager: 아직 초기화되지 않았습니다!");
                 return;
             }
-            
+
             string label = GetLandLabel();
             PlayRandomSound(label);
         }
-        
+
         private string GetFootstepLabel(bool isRunning)
         {
             switch (currentGroundType)
@@ -247,7 +244,7 @@ namespace AudioSystem
                 default: return grassWalkLabel;
             }
         }
-        
+
         private string GetJumpLabel()
         {
             switch (currentGroundType)
@@ -267,7 +264,7 @@ namespace AudioSystem
                 default: return grassJumpLabel;
             }
         }
-        
+
         private string GetLandLabel()
         {
             switch (currentGroundType)
@@ -276,23 +273,23 @@ namespace AudioSystem
                 default: return GetJumpLabel(); // 다른 지형은 Jump 사운드 사용
             }
         }
-        
+
         private void PlayRandomSound(string label)
         {
             if (soundCache.ContainsKey(label) && soundCache[label].Count > 0)
             {
                 List<AudioClip> sounds = soundCache[label];
                 AudioClip selectedSound = sounds[Random.Range(0, sounds.Count)];
-                
+
                 float volume = 1.0f;
                 float pitch = 1.0f;
-                
+
                 if (enableRandomVariation)
                 {
                     volume = 1.0f + Random.Range(-volumeVariation, volumeVariation);
                     pitch = 1.0f + Random.Range(-pitchVariation, pitchVariation);
                 }
-                
+
                 if (AudioManager.Instance != null)
                 {
                     AudioManager.Instance.PlaySFX(selectedSound, volume);
@@ -307,7 +304,7 @@ namespace AudioSystem
                 Debug.LogWarning($"AddressableFootstepManager: {label} 사운드가 로드되지 않았습니다.");
             }
         }
-        
+
         /// <summary>
         /// 지형 변경
         /// </summary>
@@ -316,15 +313,15 @@ namespace AudioSystem
             currentGroundType = newGroundType;
             Debug.Log($"AddressableFootstepManager: 지형이 {newGroundType}로 변경되었습니다.");
         }
-        
+
         /// <summary>
         /// 특정 레이블의 사운드 수동 로드
         /// </summary>
-        public async Task LoadSpecificSounds(string label)
+        public async System.Threading.Tasks.Task LoadSpecificSounds(string label)
         {
             await LoadSoundsByLabel(label);
         }
-        
+
         /// <summary>
         /// 캐시된 사운드 해제
         /// </summary>
@@ -334,29 +331,29 @@ namespace AudioSystem
             isInitialized = false;
             Debug.Log("AddressableFootstepManager: 사운드 캐시가 해제되었습니다.");
         }
-        
+
         [ContextMenu("테스트 발자국 소리")]
         public void TestFootstepSound()
         {
             PlayFootstepSound(false);
         }
-        
+
         [ContextMenu("테스트 달리기 소리")]
         public void TestRunSound()
         {
             PlayFootstepSound(true);
         }
-        
+
         [ContextMenu("테스트 점프 소리")]
         public void TestJumpSound()
         {
             PlayJumpSound();
         }
-        
+
         [ContextMenu("사운드 초기화")]
-        public void TestInitialize()
+        public async void TestInitialize()
         {
-            InitializeFootstepSounds();
+            await InitializeFootstepSounds();
         }
     }
 }

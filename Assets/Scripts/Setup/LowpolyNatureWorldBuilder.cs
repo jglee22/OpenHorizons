@@ -492,7 +492,7 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
         minDecorationDistance = 1f;
         gridSize = 2.5f;
         
-        Debug.Log("🌳 고밀도 설정이 적용되었습니다! 풍성한 월드가 생성됩니다.");
+        Debug.Log($"🌳 고밀도 설정이 적용되었습니다! 나무: {treeDensity}, 바위: {rockDensity}, 장식: {decorationDensity}");
     }
     
     /// <summary>
@@ -510,7 +510,7 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
         minDecorationDistance = 1.5f;
         gridSize = 3f;
         
-        Debug.Log("🌲 중밀도 설정이 적용되었습니다! 균형잡힌 월드가 생성됩니다.");
+        Debug.Log($"🌲 중밀도 설정이 적용되었습니다! 나무: {treeDensity}, 바위: {rockDensity}, 장식: {decorationDensity}");
     }
     
     /// <summary>
@@ -528,7 +528,7 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
         minDecorationDistance = 2f;
         gridSize = 5f;
         
-        Debug.Log("🌿 저밀도 설정이 적용되었습니다! 여유로운 월드가 생성됩니다.");
+        Debug.Log($"🌿 저밀도 설정이 적용되었습니다! 나무: {treeDensity}, 바위: {rockDensity}, 장식: {decorationDensity}");
     }
     
     #endregion
@@ -542,6 +542,13 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     {
         gridWidth = Mathf.CeilToInt(worldSize.x / gridSize);
         gridHeight = Mathf.CeilToInt(worldSize.y / gridSize);
+        
+        // 그리드 크기 제한 (너무 크면 성능 문제)
+        int maxGridSize = 100;
+        if (gridWidth > maxGridSize) gridWidth = maxGridSize;
+        if (gridHeight > maxGridSize) gridHeight = maxGridSize;
+        
+        Debug.Log($"🗺️ 그리드 초기화: {gridWidth}x{gridHeight} (월드 크기: {worldSize}, 그리드 크기: {gridSize})");
         
         worldGrid = new GridCell[gridWidth, gridHeight];
         
@@ -620,19 +627,39 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     private void GenerateSeasonalTrees()
     {
         GameObject[] selectedTrees = GetTreesForSeason(currentSeason);
-        if (selectedTrees == null || selectedTrees.Length == 0) return;
+        Debug.Log($"🌳 나무 생성 시작 - 선택된 나무: {selectedTrees?.Length ?? 0}개, 계절: {currentSeason}");
+        
+        if (selectedTrees == null || selectedTrees.Length == 0) 
+        {
+            Debug.LogWarning("⚠️ 나무 프리팹이 없습니다!");
+            return;
+        }
         
         int treeCount = Mathf.RoundToInt(gridWidth * gridHeight * treeDensity * 0.1f);
+        Debug.Log($"🌳 나무 생성 목표: {treeCount}개, 밀도: {treeDensity}, 그리드: {gridWidth}x{gridHeight}");
         
-        for (int i = 0; i < treeCount; i++)
+        int actualTreeCount = 0;
+        int attempts = 0;
+        int maxAttempts = treeCount * 3; // 최대 시도 횟수
+        
+        while (actualTreeCount < treeCount && attempts < maxAttempts)
         {
-            Vector2Int gridPos = FindSuitableTreePosition();
-            if (gridPos != Vector2Int.zero)
+            // 완전히 랜덤한 위치 선택
+            int x = Random.Range(0, gridWidth);
+            int z = Random.Range(0, gridHeight);
+            
+            // 기본 조건만 확인
+            if (!worldGrid[x, z].isOccupied && worldGrid[x, z].terrainType != TerrainType.Water)
             {
                 GameObject treePrefab = selectedTrees[Random.Range(0, selectedTrees.Length)];
-                PlaceTree(gridPos, treePrefab);
+                PlaceTree(new Vector2Int(x, z), treePrefab);
+                actualTreeCount++;
             }
+            
+            attempts++;
         }
+        
+        Debug.Log($"🌳 나무 생성 완료 - 실제 생성: {actualTreeCount}개 / 목표: {treeCount}개 (시도: {attempts}회)");
     }
     
     /// <summary>
@@ -721,28 +748,38 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private void PlaceTree(Vector2Int gridPos, GameObject treePrefab)
     {
-        Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
-        
-        // 지형에 맞춰 높이 조정
-        if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+        try
         {
-            worldPos.y = hit.point.y;
+            Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
+            
+            // 지형에 맞춰 높이 조정
+            if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+            {
+                worldPos.y = hit.point.y;
+            }
+            
+            GameObject tree = Instantiate(treePrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
+            tree.transform.localScale = Vector3.one * Random.Range(0.8f, 1.2f);
+            tree.name = $"Tree_{generatedObjects.Count} (Generated)";
+            
+            // 부모 오브젝트의 자식으로 설정
+            if (treesParent != null)
+            {
+                tree.transform.SetParent(treesParent.transform);
+            }
+            
+            // 그리드 셀에 등록
+            worldGrid[gridPos.x, gridPos.y].isOccupied = true;
+            worldGrid[gridPos.x, gridPos.y].objects.Add(tree);
+            
+            generatedObjects.Add(tree);
+            
+            Debug.Log($"✅ 나무 배치 성공: {tree.name} at {worldPos}");
         }
-        
-        GameObject tree = Instantiate(treePrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
-        tree.transform.localScale = Vector3.one * Random.Range(0.8f, 1.2f);
-        
-        // 부모 오브젝트의 자식으로 설정
-        if (treesParent != null)
+        catch (System.Exception e)
         {
-            tree.transform.SetParent(treesParent.transform);
+            Debug.LogError($"❌ 나무 배치 실패: {e.Message}");
         }
-        
-        // 그리드 셀에 등록
-        worldGrid[gridPos.x, gridPos.y].isOccupied = true;
-        worldGrid[gridPos.x, gridPos.y].objects.Add(tree);
-        
-        generatedObjects.Add(tree);
     }
     
     /// <summary>
@@ -769,16 +806,30 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     private void GenerateRocks()
     {
         int rockCount = Mathf.RoundToInt(gridWidth * gridHeight * rockDensity * 0.05f);
+        Debug.Log($"🪨 바위 생성 시작 - 목표: {rockCount}개, 밀도: {rockDensity}, 그리드: {gridWidth}x{gridHeight}");
         
-        for (int i = 0; i < rockCount; i++)
+        int actualRockCount = 0;
+        int attempts = 0;
+        int maxAttempts = rockCount * 3; // 최대 시도 횟수
+        
+        while (actualRockCount < rockCount && attempts < maxAttempts)
         {
-            Vector2Int gridPos = FindSuitableRockPosition();
-            if (gridPos != Vector2Int.zero)
+            // 완전히 랜덤한 위치 선택
+            int x = Random.Range(0, gridWidth);
+            int z = Random.Range(0, gridHeight);
+            
+            // 기본 조건만 확인
+            if (!worldGrid[x, z].isOccupied && worldGrid[x, z].terrainType != TerrainType.Water)
             {
                 GameObject rockPrefab = rocks[Random.Range(0, rocks.Length)];
-                PlaceRock(gridPos, rockPrefab);
+                PlaceRock(new Vector2Int(x, z), rockPrefab);
+                actualRockCount++;
             }
+            
+            attempts++;
         }
+        
+        Debug.Log($"🪨 바위 생성 완료 - 실제 생성: {actualRockCount}개 / 목표: {rockCount}개 (시도: {attempts}회)");
     }
     
     /// <summary>
@@ -804,6 +855,7 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
             return suitablePositions[Random.Range(0, suitablePositions.Count)];
         }
         
+        Debug.LogWarning($"⚠️ 바위 배치 가능한 위치를 찾을 수 없습니다! 그리드: {gridWidth}x{gridHeight}, 적합한 위치: {suitablePositions.Count}개");
         return Vector2Int.zero;
     }
     
@@ -812,29 +864,12 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private bool CanPlaceRock(int x, int z)
     {
+        // 기본 조건만 확인 (거리 조건 완화)
         if (worldGrid[x, z].isOccupied) return false;
         if (worldGrid[x, z].terrainType == TerrainType.Water) return false;
         
-        // 다른 오브젝트와의 거리 확인
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dz = -1; dz <= 1; dz++)
-            {
-                int nx = x + dx;
-                int nz = z + dz;
-                
-                if (nx >= 0 && nx < gridWidth && nz >= 0 && nz < gridHeight)
-                {
-                    if (worldGrid[nx, nz].isOccupied)
-                    {
-                        float distance = Mathf.Sqrt(dx * dx + dz * dz) * gridSize;
-                        if (distance < minRockDistance) return false;
-                    }
-                }
-            }
-        }
-        
-        return true;
+        // 간단한 랜덤 배치 (70% 확률로 배치)
+        return Random.value < 0.7f;
     }
     
     /// <summary>
@@ -842,28 +877,38 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private void PlaceRock(Vector2Int gridPos, GameObject rockPrefab)
     {
-        Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
-        
-        // 지형에 맞춰 높이 조정
-        if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+        try
         {
-            worldPos.y = hit.point.y;
+            Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
+            
+            // 지형에 맞춰 높이 조정
+            if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+            {
+                worldPos.y = hit.point.y;
+            }
+            
+            GameObject rock = Instantiate(rockPrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
+            rock.transform.localScale = Vector3.one * Random.Range(0.7f, 1.3f);
+            rock.name = $"Rock_{generatedObjects.Count} (Generated)";
+            
+            // 부모 오브젝트의 자식으로 설정
+            if (rocksParent != null)
+            {
+                rock.transform.SetParent(rocksParent.transform);
+            }
+            
+            // 그리드 셀에 등록
+            worldGrid[gridPos.x, gridPos.y].isOccupied = true;
+            worldGrid[gridPos.x, gridPos.y].objects.Add(rock);
+            
+            generatedObjects.Add(rock);
+            
+            Debug.Log($"✅ 바위 배치 성공: {rock.name} at {worldPos}");
         }
-        
-        GameObject rock = Instantiate(rockPrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
-        rock.transform.localScale = Vector3.one * Random.Range(0.7f, 1.3f);
-        
-        // 부모 오브젝트의 자식으로 설정
-        if (rocksParent != null)
+        catch (System.Exception e)
         {
-            rock.transform.SetParent(rocksParent.transform);
+            Debug.LogError($"❌ 바위 배치 실패: {e.Message}");
         }
-        
-        // 그리드 셀에 등록
-        worldGrid[gridPos.x, gridPos.y].isOccupied = true;
-        worldGrid[gridPos.x, gridPos.y].objects.Add(rock);
-        
-        generatedObjects.Add(rock);
     }
     
     /// <summary>
@@ -979,16 +1024,30 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     private void GenerateBushes()
     {
         int bushCount = Mathf.RoundToInt(gridWidth * gridHeight * decorationDensity * 0.1f);
+        Debug.Log($"🌿 관목 생성 시작 - 목표: {bushCount}개, 밀도: {decorationDensity}, 그리드: {gridWidth}x{gridHeight}");
         
-        for (int i = 0; i < bushCount; i++)
+        int actualBushCount = 0;
+        int attempts = 0;
+        int maxAttempts = bushCount * 3; // 최대 시도 횟수
+        
+        while (actualBushCount < bushCount && attempts < maxAttempts)
         {
-            Vector2Int gridPos = FindSuitableDecorationPosition();
-            if (gridPos != Vector2Int.zero)
+            // 완전히 랜덤한 위치 선택
+            int x = Random.Range(0, gridWidth);
+            int z = Random.Range(0, gridHeight);
+            
+            // 기본 조건만 확인
+            if (!worldGrid[x, z].isOccupied && worldGrid[x, z].terrainType != TerrainType.Water)
             {
                 GameObject bushPrefab = bushes[Random.Range(0, bushes.Length)];
-                PlaceDecoration(gridPos, bushPrefab);
+                PlaceDecoration(new Vector2Int(x, z), bushPrefab);
+                actualBushCount++;
             }
+            
+            attempts++;
         }
+        
+        Debug.Log($"🌿 관목 생성 완료 - 실제 생성: {actualBushCount}개 / 목표: {bushCount}개 (시도: {attempts}회)");
     }
     
     /// <summary>
@@ -1050,6 +1109,7 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
             return suitablePositions[Random.Range(0, suitablePositions.Count)];
         }
         
+        Debug.LogWarning($"⚠️ 장식 배치 가능한 위치를 찾을 수 없습니다! 그리드: {gridWidth}x{gridHeight}, 적합한 위치: {suitablePositions.Count}개");
         return Vector2Int.zero;
     }
     
@@ -1058,10 +1118,12 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private bool CanPlaceDecoration(int x, int z)
     {
+        // 기본 조건만 확인
         if (worldGrid[x, z].isOccupied) return false;
         if (worldGrid[x, z].terrainType == TerrainType.Water) return false;
         
-        return true;
+        // 간단한 랜덤 배치 (80% 확률로 배치)
+        return Random.value < 0.8f;
     }
     
     /// <summary>
@@ -1069,28 +1131,38 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private void PlaceDecoration(Vector2Int gridPos, GameObject decorationPrefab)
     {
-        Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
-        
-        // 지형에 맞춰 높이 조정
-        if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+        try
         {
-            worldPos.y = hit.point.y;
+            Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
+            
+            // 지형에 맞춰 높이 조정
+            if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+            {
+                worldPos.y = hit.point.y;
+            }
+            
+            GameObject decoration = Instantiate(decorationPrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
+            decoration.transform.localScale = Vector3.one * Random.Range(0.8f, 1.2f);
+            decoration.name = $"Decoration_{generatedObjects.Count} (Generated)";
+            
+            // 부모 오브젝트의 자식으로 설정
+            if (vegetationParent != null)
+            {
+                decoration.transform.SetParent(vegetationParent.transform);
+            }
+            
+            // 그리드 셀에 등록
+            worldGrid[gridPos.x, gridPos.y].isOccupied = true;
+            worldGrid[gridPos.x, gridPos.y].objects.Add(decoration);
+            
+            generatedObjects.Add(decoration);
+            
+            Debug.Log($"✅ 장식 배치 성공: {decoration.name} at {worldPos}");
         }
-        
-        GameObject decoration = Instantiate(decorationPrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
-        decoration.transform.localScale = Vector3.one * Random.Range(0.8f, 1.2f);
-        
-        // 부모 오브젝트의 자식으로 설정
-        if (vegetationParent != null)
+        catch (System.Exception e)
         {
-            decoration.transform.SetParent(vegetationParent.transform);
+            Debug.LogError($"❌ 장식 배치 실패: {e.Message}");
         }
-        
-        // 그리드 셀에 등록
-        worldGrid[gridPos.x, gridPos.y].isOccupied = true;
-        worldGrid[gridPos.x, gridPos.y].objects.Add(decoration);
-        
-        generatedObjects.Add(decoration);
     }
     
     /// <summary>
@@ -1237,18 +1309,77 @@ public class LowpolyNatureWorldBuilder : MonoBehaviour
     /// </summary>
     private void GenerateProps()
     {
-        if (props == null || props.Length == 0) return;
+        Debug.Log($"🎭 Props 생성 시작 - 사용 가능한 Props: {props?.Length ?? 0}개");
         
-        int propCount = Mathf.RoundToInt(gridWidth * gridHeight * 0.01f);
-        
-        for (int i = 0; i < propCount; i++)
+        if (props == null || props.Length == 0) 
         {
-            Vector2Int gridPos = FindSuitableDecorationPosition();
-            if (gridPos != Vector2Int.zero)
+            Debug.LogWarning("⚠️ Props 프리팹이 없습니다!");
+            return;
+        }
+        
+        int propCount = Mathf.RoundToInt(gridWidth * gridHeight * 0.05f); // 0.01f → 0.05f로 증가
+        Debug.Log($"🎭 Props 생성 목표: {propCount}개, 그리드: {gridWidth}x{gridHeight}");
+        
+        int actualPropCount = 0;
+        int attempts = 0;
+        int maxAttempts = propCount * 3; // 최대 시도 횟수
+        
+        while (actualPropCount < propCount && attempts < maxAttempts)
+        {
+            // 완전히 랜덤한 위치 선택
+            int x = Random.Range(0, gridWidth);
+            int z = Random.Range(0, gridHeight);
+            
+            // 기본 조건만 확인
+            if (!worldGrid[x, z].isOccupied && worldGrid[x, z].terrainType != TerrainType.Water)
             {
                 GameObject propPrefab = props[Random.Range(0, props.Length)];
-                PlaceDecoration(gridPos, propPrefab);
+                PlaceProp(new Vector2Int(x, z), propPrefab);
+                actualPropCount++;
             }
+            
+            attempts++;
+        }
+        
+        Debug.Log($"🎭 Props 생성 완료 - 실제 생성: {actualPropCount}개 / 목표: {propCount}개 (시도: {attempts}회)");
+    }
+    
+    /// <summary>
+    /// Props 배치
+    /// </summary>
+    private void PlaceProp(Vector2Int gridPos, GameObject propPrefab)
+    {
+        try
+        {
+            Vector3 worldPos = worldGrid[gridPos.x, gridPos.y].worldPosition;
+            
+            // 지형에 맞춰 높이 조정
+            if (Physics.Raycast(worldPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
+            {
+                worldPos.y = hit.point.y;
+            }
+            
+            GameObject prop = Instantiate(propPrefab, worldPos, Quaternion.Euler(0, Random.Range(0, 360), 0));
+            prop.transform.localScale = Vector3.one * Random.Range(0.8f, 1.2f);
+            prop.name = $"Prop_{generatedObjects.Count} (Generated)";
+            
+            // 부모 오브젝트의 자식으로 설정
+            if (propsParent != null)
+            {
+                prop.transform.SetParent(propsParent.transform);
+            }
+            
+            // 그리드 셀에 등록
+            worldGrid[gridPos.x, gridPos.y].isOccupied = true;
+            worldGrid[gridPos.x, gridPos.y].objects.Add(prop);
+            
+            generatedObjects.Add(prop);
+            
+            Debug.Log($"✅ Props 배치 성공: {prop.name} at {worldPos}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Props 배치 실패: {e.Message}");
         }
     }
     

@@ -356,6 +356,18 @@ public class EnemyAI : MonoBehaviour
     {
         currentState = EnemyState.Dead;
         
+        // 퀘스트 리포팅 - 적 처치
+        if (QuestSystem.Instance != null)
+        {
+            Debug.Log($"퀘스트 리포팅 - 적 처치: {gameObject.name}");
+            QuestSystem.Instance.ReceiveReport("Combat", gameObject, 1);
+            Debug.Log($"퀘스트 리포팅 완료 - Combat, {gameObject.name}, 1");
+        }
+        else
+        {
+            Debug.LogWarning("QuestSystem.Instance가 null입니다!");
+        }
+        
         // 사망 애니메이션
         if (animator != null)
         {
@@ -383,6 +395,48 @@ public class EnemyAI : MonoBehaviour
         }
         
         Debug.Log("적이 사망했습니다!");
+        
+        // 일정 시간 후 GameObject 제거
+        Debug.Log("DestroyAfterDelay 코루틴 시작");
+        StartCoroutine(DestroyAfterDelay(3f));
+        
+        // 대안: Invoke 사용
+        Invoke(nameof(DestroyEnemy), 3f);
+    }
+    
+    /// <summary>
+    /// 일정 시간 후 GameObject 제거
+    /// </summary>
+    private System.Collections.IEnumerator DestroyAfterDelay(float delay)
+    {
+        Debug.Log($"DestroyAfterDelay 시작 - {delay}초 대기 중...");
+        yield return new WaitForSeconds(delay);
+        
+        Debug.Log("대기 완료 - GameObject 제거 시도");
+        
+        // 사망 애니메이션이 완료된 후 GameObject 제거
+        if (gameObject != null)
+        {
+            Debug.Log($"적이 완전히 제거됩니다: {gameObject.name}");
+            Destroy(gameObject);
+        }
+        else
+        {
+            Debug.LogWarning("GameObject가 이미 null입니다!");
+        }
+    }
+    
+    /// <summary>
+    /// 적 제거 (Invoke용)
+    /// </summary>
+    private void DestroyEnemy()
+    {
+        Debug.Log("Invoke로 적 제거 시도");
+        if (gameObject != null)
+        {
+            Debug.Log($"적이 완전히 제거됩니다 (Invoke): {gameObject.name}");
+            Destroy(gameObject);
+        }
     }
     
     void OnDestroy()

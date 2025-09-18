@@ -122,6 +122,12 @@ public class CollectibleItem : InteractableObject
                // 인벤토리에 추가
                AddToInventory();
                
+               // 퀘스트 리포팅 - 아이템 수집
+               if (QuestSystem.Instance != null)
+               {
+                   QuestSystem.Instance.ReceiveReport("Item", itemName, 1);
+               }
+               
                Debug.Log($"{itemName}을(를) 수집했습니다!");
         
         if (destroyOnCollect)
