@@ -137,27 +137,27 @@ public class AudioTestController : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        if (!showTestUI) return;
+    // private void OnGUI()
+    // {
+    //     if (!showTestUI) return;
         
-        GUILayout.BeginArea(new Rect(10, 10, 300, 400));
-        GUILayout.Label("=== 사운드 테스트 ===");
-        GUILayout.Label("1키: 발걸음 소리");
-        GUILayout.Label("2키: 점프 소리");
-        GUILayout.Label("3키: 공격 소리");
-        GUILayout.Label("4키: 피해 소리");
-        GUILayout.Label("5키: 무기 장착 소리");
-        GUILayout.Label("6키: 아이템 획득 소리");
-        GUILayout.Label("7키: 인벤토리 열기 소리");
-        GUILayout.Label("8키: 버튼 클릭 소리");
-        GUILayout.Label("9키: 배경음악");
-        GUILayout.Label("0키: 전투음악");
-        GUILayout.Label("");
-        GUILayout.Label("=== 볼륨 테스트 ===");
-        GUILayout.Label("+키: 볼륨 증가");
-        GUILayout.Label("-키: 볼륨 감소");
-        GUILayout.Label("M키: 음소거");
-        GUILayout.EndArea();
-    }
+    //     GUILayout.BeginArea(new Rect(10, 10, 300, 400));
+    //     GUILayout.Label("=== 사운드 테스트 ===");
+    //     GUILayout.Label("1키: 발걸음 소리");
+    //     GUILayout.Label("2키: 점프 소리");
+    //     GUILayout.Label("3키: 공격 소리");
+    //     GUILayout.Label("4키: 피해 소리");
+    //     GUILayout.Label("5키: 무기 장착 소리");
+    //     GUILayout.Label("6키: 아이템 획득 소리");
+    //     GUILayout.Label("7키: 인벤토리 열기 소리");
+    //     GUILayout.Label("8키: 버튼 클릭 소리");
+    //     GUILayout.Label("9키: 배경음악");
+    //     GUILayout.Label("0키: 전투음악");
+    //     GUILayout.Label("");
+    //     GUILayout.Label("=== 볼륨 테스트 ===");
+    //     GUILayout.Label("+키: 볼륨 증가");
+    //     GUILayout.Label("-키: 볼륨 감소");
+    //     GUILayout.Label("M키: 음소거");
+    //     GUILayout.EndArea();
+    // }
 }

@@ -369,73 +369,73 @@ public class CombatTestManager : MonoBehaviour
         }
     }
     
-    void OnGUI()
-    {
-        // 더 큰 폰트 스타일 설정
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 16;
-        labelStyle.normal.textColor = Color.white;
+    // void OnGUI()
+    // {
+    //     // 더 큰 폰트 스타일 설정
+    //     GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+    //     labelStyle.fontSize = 16;
+    //     labelStyle.normal.textColor = Color.white;
         
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 18;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
+    //     GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
+    //     headerStyle.fontSize = 18;
+    //     headerStyle.fontStyle = FontStyle.Bold;
+    //     headerStyle.normal.textColor = Color.yellow;
         
-        // 테스트 UI 표시 - 더 큰 영역과 간격
-        GUILayout.BeginArea(new Rect(10, 10, 400, 300));
+    //     // 테스트 UI 표시 - 더 큰 영역과 간격
+    //     GUILayout.BeginArea(new Rect(10, 10, 400, 300));
         
-        GUILayout.Label("=== 전투 시스템 테스트 ===", headerStyle);
-        GUILayout.Space(5);
+    //     GUILayout.Label("=== 전투 시스템 테스트 ===", headerStyle);
+    //     GUILayout.Space(5);
         
-        GUILayout.Label($"E키: 적 생성 (현재: {enemyCount}마리)", labelStyle);
-        GUILayout.Label("Q키: 무기 획득", labelStyle);
-        GUILayout.Label("R키: 무기 장착", labelStyle);
-        GUILayout.Label("T키: 무기 해제", labelStyle);
-        GUILayout.Label("H키: 플레이어 체력 회복", labelStyle);
+    //     GUILayout.Label($"E키: 적 생성 (현재: {enemyCount}마리)", labelStyle);
+    //     GUILayout.Label("Q키: 무기 획득", labelStyle);
+    //     GUILayout.Label("R키: 무기 장착", labelStyle);
+    //     GUILayout.Label("T키: 무기 해제", labelStyle);
+    //     GUILayout.Label("H키: 플레이어 체력 회복", labelStyle);
         
-        GUILayout.Space(10);
-        GUILayout.Label("=== 조작법 ===", headerStyle);
-        GUILayout.Space(5);
+    //     GUILayout.Space(10);
+    //     GUILayout.Label("=== 조작법 ===", headerStyle);
+    //     GUILayout.Space(5);
         
-        GUILayout.Label("마우스 왼쪽: 공격", labelStyle);
-        GUILayout.Label("마우스 오른쪽: 방어", labelStyle);
-        GUILayout.Label("WASD: 이동", labelStyle);
-        GUILayout.Label("Shift: 달리기", labelStyle);
-        GUILayout.Label("Space: 점프", labelStyle);
+    //     GUILayout.Label("마우스 왼쪽: 공격", labelStyle);
+    //     GUILayout.Label("마우스 오른쪽: 방어", labelStyle);
+    //     GUILayout.Label("WASD: 이동", labelStyle);
+    //     GUILayout.Label("Shift: 달리기", labelStyle);
+    //     GUILayout.Label("Space: 점프", labelStyle);
         
-        // 플레이어 상태 표시
-        if (playerCombat != null)
-        {
-            GUILayout.Space(10);
-            GUILayout.Label("=== 플레이어 상태 ===", headerStyle);
-            GUILayout.Space(5);
+    //     // 플레이어 상태 표시
+    //     if (playerCombat != null)
+    //     {
+    //         GUILayout.Space(10);
+    //         GUILayout.Label("=== 플레이어 상태 ===", headerStyle);
+    //         GUILayout.Space(5);
             
-            GUILayout.Label($"체력: {playerCombat.currentHealth:F0}/{playerCombat.maxHealth:F0}", labelStyle);
-            GUILayout.Label($"무기: {playerCombat.GetWeaponInfo()}", labelStyle);
-        }
+    //         GUILayout.Label($"체력: {playerCombat.currentHealth:F0}/{playerCombat.maxHealth:F0}", labelStyle);
+    //         GUILayout.Label($"무기: {playerCombat.GetWeaponInfo()}", labelStyle);
+    //     }
         
-        // 무기 상태 표시
-        GUILayout.Space(10);
-        GUILayout.Label("=== 무기 상태 ===", headerStyle);
-        GUILayout.Space(5);
+    //     // 무기 상태 표시
+    //     GUILayout.Space(10);
+    //     GUILayout.Label("=== 무기 상태 ===", headerStyle);
+    //     GUILayout.Space(5);
         
-        if (inventoryManager != null)
-        {
-            int weaponCount = inventoryManager.GetItemCount("Bronze Sword");
-            if (weaponCount > 0)
-            {
-                GUILayout.Label($"인벤토리 무기: Bronze Sword x{weaponCount}", labelStyle);
-            }
-            else
-            {
-                GUILayout.Label("인벤토리 무기: 없음", labelStyle);
-            }
-        }
-        else
-        {
-            GUILayout.Label("인벤토리: 연결 안됨", labelStyle);
-        }
+    //     if (inventoryManager != null)
+    //     {
+    //         int weaponCount = inventoryManager.GetItemCount("Bronze Sword");
+    //         if (weaponCount > 0)
+    //         {
+    //             GUILayout.Label($"인벤토리 무기: Bronze Sword x{weaponCount}", labelStyle);
+    //         }
+    //         else
+    //         {
+    //             GUILayout.Label("인벤토리 무기: 없음", labelStyle);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         GUILayout.Label("인벤토리: 연결 안됨", labelStyle);
+    //     }
         
-        GUILayout.EndArea();
-    }
+    //     GUILayout.EndArea();
+    // }
 }

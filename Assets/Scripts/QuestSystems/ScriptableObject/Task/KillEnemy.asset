@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69d4ee9c5b9008f4b8a89ccf77ccf181, type: 3}
+  m_Name: KillEnemy
+  m_EditorClassIdentifier: 
+  category: {fileID: 11400000, guid: 86442c5f8b044534f9016e12af7b903c, type: 2}
+  codeName: Combat
+  description: "\uC801 \uCC98\uCE58"
+  action: {fileID: 11400000, guid: 1e8e0279fd05ea54ab37ec1cf8d6d1d6, type: 2}
+  targets:
+  - {fileID: 11400000, guid: bba348763e8b8eb4d9b3ad1a07c8af69, type: 2}
+  initialSuccessValue: {fileID: 0}
+  needSuccessToComplete: 3
+  canReceiveReportsDuringCompletion: 0
