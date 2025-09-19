@@ -1,15 +1,18 @@
 using UnityEngine;
 using Firebase;
 using Firebase.Auth;
-using Firebase.Database;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections.Generic;
 
 /// <summary>
 /// Firebase 인증 관리자
 /// </summary>
 public class FirebaseAuthManager : MonoBehaviour
 {
+    private const string ExpectedProjectId = "openhorizons-7144e"; 
+private bool _isProjectMismatched = false;
+
     [Header("인증 설정")]
     public bool enableDebugLogs = true;
     
@@ -26,12 +29,23 @@ public class FirebaseAuthManager : MonoBehaviour
     public System.Action<string> OnEmailVerificationFailed;
     public System.Action OnEmailVerified;
     
-    private void Start()
-    {
-        // 인증 상태 변경 감지
-        FirebaseAuth.DefaultInstance.StateChanged += OnAuthStateChanged;
-    }
-    
+  private async void Start()
+{
+    var dep = await FirebaseApp.CheckAndFixDependenciesAsync();
+    if (dep != DependencyStatus.Available) { Debug.LogError(dep); return; }
+
+    var app = FirebaseApp.DefaultInstance;
+    var pid = app.Options.ProjectId;
+    Debug.Log($"[Firebase] ProjectId={pid}, AppId={app.Options.AppId}");
+
+    // ⛔ 다른 프로젝트에 붙어있으면 바로 알림 + 이후 가입 차단용 플래그 세팅
+    _isProjectMismatched = !string.Equals(pid, ExpectedProjectId, System.StringComparison.Ordinal);
+    if (_isProjectMismatched)
+        Debug.LogError($"[Firebase] ProjectId 불일치! Expected={ExpectedProjectId}, Actual={pid}");
+
+    FirebaseAuth.DefaultInstance.StateChanged += OnAuthStateChanged;
+}
+
     private void OnDestroy()
     {
         if (FirebaseAuth.DefaultInstance != null)
@@ -40,29 +54,6 @@ public class FirebaseAuthManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 이메일로 회원가입
-    /// </summary>
-    public async Task<bool> SignUpWithEmail(string email, string password)
-    {
-        try
-        {
-            var result = await FirebaseAuth.DefaultInstance.CreateUserWithEmailAndPasswordAsync(email, password);
-            
-            if (enableDebugLogs)
-                Debug.Log($"회원가입 성공: {result.User.Email}");
-            
-            OnSignInSuccess?.Invoke();
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            string errorMessage = GetErrorMessage(e);
-            Debug.LogError($"회원가입 실패: {errorMessage}");
-            OnSignInFailed?.Invoke(errorMessage);
-            return false;
-        }
-    }
     
     /// <summary>
     /// 이메일로 로그인
@@ -280,120 +271,165 @@ public class FirebaseAuthManager : MonoBehaviour
         }
     }
     
+    #region 회원가입 관련 메서드
+    
     /// <summary>
-    /// 이메일 인증이 필요한 회원가입
+    /// 이메일 중복 체크 (더미 비밀번호 로그인 방식)
     /// </summary>
-    public async Task<bool> SignUpWithEmailVerification(string email, string password)
+    public async Task<bool> IsEmailRegistered(string email)
     {
+        if (string.IsNullOrEmpty(email))
+            return false;
+            
         try
         {
-            var result = await FirebaseAuth.DefaultInstance.CreateUserWithEmailAndPasswordAsync(email, password);
+            if (enableDebugLogs)
+                Debug.Log($"[Auth] 이메일 중복 체크 시작: {email}");
+            
+            // 더미 비밀번호로 로그인 시도
+            string dummyPassword = "dummy_password_12345_very_long_string_impossible_to_guess_98765";
+            
+            // 현재 사용자 백업
+            var currentUser = FirebaseAuth.DefaultInstance.CurrentUser;
+            
+            try
+            {
+                // 더미 비밀번호로 로그인 시도
+                var credential = EmailAuthProvider.GetCredential(email, dummyPassword);
+                await FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential);
+                
+                // 여기까지 오면 이메일이 존재한다는 뜻
+                if (enableDebugLogs)
+                    Debug.Log($"[Auth] 이메일 존재함: {email}");
+                
+                // 원래 사용자로 복원
+                if (currentUser != null)
+                {
+                    await FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(
+                        EmailAuthProvider.GetCredential(currentUser.Email, "temp"));
+                }
+                else
+                {
+                    FirebaseAuth.DefaultInstance.SignOut();
+                }
+                
+                return true;
+            }
+            catch (FirebaseException e)
+            {
+                // 원래 사용자로 복원
+                if (currentUser != null)
+                {
+                    try
+                    {
+                        await FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(
+                            EmailAuthProvider.GetCredential(currentUser.Email, "temp"));
+                    }
+                    catch
+                    {
+                        FirebaseAuth.DefaultInstance.SignOut();
+                    }
+                }
+                else
+                {
+                    FirebaseAuth.DefaultInstance.SignOut();
+                }
+                
+                // 오류 메시지로 판단
+                if (e.Message.Contains("wrong-password") || e.Message.Contains("WrongPassword"))
+                {
+                    if (enableDebugLogs)
+                        Debug.Log($"[Auth] 이메일 존재함 (WrongPassword): {email}");
+                    return true;
+                }
+                else if (e.Message.Contains("user-not-found") || e.Message.Contains("UserNotFound"))
+                {
+                    if (enableDebugLogs)
+                        Debug.Log($"[Auth] 이메일 없음 (UserNotFound): {email}");
+                    return false;
+                }
+                else
+                {
+                    if (enableDebugLogs)
+                        Debug.LogError($"[Auth] 이메일 체크 중 오류: {e.Message}");
+                    return false;
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            if (enableDebugLogs)
+                Debug.LogError($"[Auth] 이메일 중복 체크 오류: {e}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 이메일/비밀번호로 회원가입
+    /// </summary>
+    public async Task<bool> SignUpWithEmail(string email, string password)
+    {
+        if (_isProjectMismatched)
+        {
+            if (enableDebugLogs)
+                Debug.LogError("[Auth] 프로젝트 불일치로 회원가입 차단");
+            return false;
+        }
+        
+        try
+        {
+            if (enableDebugLogs)
+                Debug.Log($"[Auth] 회원가입 시도: {email}");
+            
+            await FirebaseAuth.DefaultInstance.CreateUserWithEmailAndPasswordAsync(email, password);
             
             if (enableDebugLogs)
-                Debug.Log($"회원가입 성공: {result.User.Email}");
+                Debug.Log($"[Auth] 회원가입 성공: {email}");
             
-            // 이메일 인증 메일 전송
-            bool verificationSent = await SendEmailVerification();
-            if (verificationSent)
-            {
-                if (enableDebugLogs)
-                    Debug.Log("인증 메일이 전송되었습니다. 이메일을 확인해주세요.");
-            }
-            
+            OnSignInSuccess?.Invoke();
             return true;
+        }
+        catch (FirebaseException e)
+        {
+            string errorMessage = GetAuthErrorMessage(e);
+            if (enableDebugLogs)
+                Debug.LogError($"[Auth] 회원가입 실패: {errorMessage}");
+            
+            // OnSignInFailed 대신 직접 오류 메시지 반환
+            return false;
         }
         catch (System.Exception e)
         {
             string errorMessage = GetErrorMessage(e);
             if (enableDebugLogs)
-                Debug.LogError($"회원가입 실패: {errorMessage}");
+                Debug.LogError($"[Auth] 회원가입 오류: {errorMessage}");
             
             OnSignInFailed?.Invoke(errorMessage);
             return false;
         }
     }
-
-    /// <summary>
-    /// 이메일이 이미 가입되어 있는지 확인
-    /// </summary>
-    public async System.Threading.Tasks.Task<bool> IsEmailRegistered(string email)
-    {
-        try
-        {
-            if (enableDebugLogs)
-                Debug.Log($"이메일 중복 체크 시작: {email}");
-            
-            // 임시 하드코딩된 중복 체크 (테스트용)
-            string[] knownEmails = { "sfaa1541@naver.com" };
-            bool exists = System.Array.Exists(knownEmails, e => e == email);
-            
-            if (exists)
-            {
-                if (enableDebugLogs)
-                    Debug.Log($"하드코딩된 중복 체크 결과({email}): 이미 가입됨");
-                return true;
-            }
-            
-            // Firebase Realtime Database에서 이메일 목록 확인
-            var database = FirebaseDatabase.DefaultInstance;
-            var emailRef = database.GetReference("registered_emails").Child(email.Replace(".", "_"));
-            
-            var snapshot = await emailRef.GetValueAsync();
-            exists = snapshot.Exists;
-            
-            if (enableDebugLogs)
-                Debug.Log($"이메일 중복 체크 결과({email}): {(exists ? "이미 가입됨" : "미가입")}");
-            
-            return exists;
-        }
-        catch (System.Exception e)
-        {
-            if (enableDebugLogs)
-                Debug.LogError($"이메일 중복 체크 실패: {e.Message}");
-            // 오류 발생 시 안전하게 false 반환 (가입 진행 허용)
-            return false;
-        }
-    }
     
     /// <summary>
-    /// 이메일을 등록된 이메일 목록에 추가
+    /// Firebase Auth 오류 메시지 변환
     /// </summary>
-    public async System.Threading.Tasks.Task<bool> RegisterEmail(string email)
+    private string GetAuthErrorMessage(FirebaseException e)
     {
-        try
-        {
-            var database = FirebaseDatabase.DefaultInstance;
-            var emailRef = database.GetReference("registered_emails").Child(email.Replace(".", "_"));
-            
-            // 간단한 문자열로 저장
-            await emailRef.SetValueAsync(email);
-            
-            if (enableDebugLogs)
-                Debug.Log($"이메일 등록 완료: {email}");
-            
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            if (enableDebugLogs)
-                Debug.LogError($"이메일 등록 실패: {e.Message}");
-            return false;
-        }
+        string message = e.Message.ToLower();
+        
+        if (message.Contains("email-already-in-use") || message.Contains("emailalreadyinuse"))
+            return "이미 사용 중인 이메일입니다.";
+        else if (message.Contains("invalid-email") || message.Contains("invalidemail"))
+            return "올바르지 않은 이메일 형식입니다.";
+        else if (message.Contains("weak-password") || message.Contains("weakpassword"))
+            return "비밀번호가 너무 약합니다. 6자 이상 입력해주세요.";
+        else if (message.Contains("network-request-failed") || message.Contains("networkrequestfailed"))
+            return "네트워크 연결을 확인해주세요.";
+        else if (message.Contains("too-many-requests") || message.Contains("toomanyrequests"))
+            return "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.";
+        else
+            return $"회원가입 실패: {e.Message}";
     }
     
-    /// <summary>
-    /// 기존 이메일들을 수동으로 등록 (테스트용)
-    /// </summary>
-    [ContextMenu("기존 이메일들 등록")]
-    public async void RegisterExistingEmails()
-    {
-        string[] existingEmails = { "sfaa1541@naver.com" }; // 기존에 가입된 이메일들
-        
-        foreach (string email in existingEmails)
-        {
-            await RegisterEmail(email);
-        }
-        
-        Debug.Log("기존 이메일들 등록 완료!");
-    }
+    #endregion
+    
 }
