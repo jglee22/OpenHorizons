@@ -12,6 +12,7 @@ public class LobbyUIManager : MonoBehaviour
     [Header("UI 패널")]
     public GameObject loginPanel;
     public GameObject signupPanel;
+    public GameObject verificationPanel;
     public GameObject mainMenuPanel;
     
     [Header("로그인 UI")]
@@ -30,6 +31,15 @@ public class LobbyUIManager : MonoBehaviour
     public Button goToLoginButton;
     public TextMeshProUGUI signupStatusText;
     
+    [Header("인증번호 UI")]
+    public TMP_InputField verificationCodeInput;
+    public Button verifyCodeButton;
+    public Button resendCodeButton;
+    public Button backToSignupButton;
+    public TextMeshProUGUI verificationStatusText;
+    public TextMeshProUGUI verificationEmailText;
+    public TextMeshProUGUI timerText;
+    
     [Header("메인 메뉴 UI")]
     public TextMeshProUGUI welcomeText;
     public Button logoutButton;
@@ -46,11 +56,19 @@ public class LobbyUIManager : MonoBehaviour
     private const string SAVED_PASSWORD_KEY = "SavedPassword";
     
     private FirebaseAuthManager authManager;
+    private EmailService emailService;
     private bool isProcessing = false;
     
     // 탭 네비게이션을 위한 입력 필드 순서
     private TMP_InputField[] loginInputFields;
     private TMP_InputField[] signupInputFields;
+    
+    // 인증번호 관련 변수
+    private string pendingEmail;
+    private string pendingPassword;
+    private string verificationCode;
+    private float verificationTimer;
+    private bool isVerificationActive;
     
     private void Start()
     {
@@ -59,6 +77,14 @@ public class LobbyUIManager : MonoBehaviour
         if (authManager == null)
         {
             Debug.LogError("FirebaseAuthManager를 찾을 수 없습니다!");
+            return;
+        }
+        
+        // Email Service 찾기
+        emailService = FindObjectOfType<EmailService>();
+        if (emailService == null)
+        {
+            Debug.LogError("EmailService를 찾을 수 없습니다!");
             return;
         }
         
@@ -89,6 +115,12 @@ public class LobbyUIManager : MonoBehaviour
             signupButton.onClick.AddListener(OnSignupButtonClicked);
         if (goToLoginButton != null)
             goToLoginButton.onClick.AddListener(OnGoToLoginClicked);
+        if (verifyCodeButton != null)
+            verifyCodeButton.onClick.AddListener(OnVerifyCodeClicked);
+        if (resendCodeButton != null)
+            resendCodeButton.onClick.AddListener(OnResendCodeClicked);
+        if (backToSignupButton != null)
+            backToSignupButton.onClick.AddListener(OnBackToSignupClicked);
         if (logoutButton != null)
             logoutButton.onClick.AddListener(OnLogoutButtonClicked);
         if (startGameButton != null)
@@ -238,7 +270,14 @@ public class LobbyUIManager : MonoBehaviour
     {
         SetPanelActive(loginPanel, true);
         SetPanelActive(signupPanel, false);
+        SetPanelActive(verificationPanel, false);
         SetPanelActive(mainMenuPanel, false);
+        
+        // 인증번호 관련 상태 초기화
+        isVerificationActive = false;
+        pendingEmail = "";
+        pendingPassword = "";
+        verificationCode = "";
         
         ClearInputFields();
         ClearStatusTexts();
@@ -254,6 +293,7 @@ public class LobbyUIManager : MonoBehaviour
     {
         SetPanelActive(loginPanel, false);
         SetPanelActive(signupPanel, true);
+        SetPanelActive(verificationPanel, false);
         SetPanelActive(mainMenuPanel, false);
         
         ClearInputFields();
@@ -266,11 +306,45 @@ public class LobbyUIManager : MonoBehaviour
         }
     }
     
+    public void ShowVerificationPanel(string email, string password, string code)
+    {
+        SetPanelActive(loginPanel, false);
+        SetPanelActive(signupPanel, false);
+        SetPanelActive(verificationPanel, true);
+        SetPanelActive(mainMenuPanel, false);
+        
+        // 인증번호 관련 변수 저장
+        pendingEmail = email;
+        pendingPassword = password;
+        verificationCode = code;
+        verificationTimer = 300f; // 5분
+        isVerificationActive = true;
+        
+        // UI 업데이트
+        if (verificationEmailText != null)
+            verificationEmailText.text = $"인증번호가 {email}로 전송되었습니다.";
+        
+        if (verificationCodeInput != null)
+        {
+            verificationCodeInput.text = "";
+            SelectInputField(verificationCodeInput);
+        }
+        
+        UpdateVerificationStatus("인증번호를 입력해주세요.", Color.white);
+    }
+    
     public void ShowMainMenuPanel()
     {
         SetPanelActive(loginPanel, false);
         SetPanelActive(signupPanel, false);
+        SetPanelActive(verificationPanel, false);
         SetPanelActive(mainMenuPanel, true);
+        
+        // 인증번호 관련 상태 초기화
+        isVerificationActive = false;
+        pendingEmail = "";
+        pendingPassword = "";
+        verificationCode = "";
     }
     
     private void SetPanelActive(GameObject panel, bool active)
@@ -283,6 +357,7 @@ public class LobbyUIManager : MonoBehaviour
     {
         SetPanelActive(loginPanel, false);
         SetPanelActive(signupPanel, false);
+        SetPanelActive(verificationPanel, false);
         SetPanelActive(mainMenuPanel, false);
     }
     
@@ -391,19 +466,29 @@ public class LobbyUIManager : MonoBehaviour
         
         try
         {
-            // 회원가입 시도 (Firebase에서 중복 체크)
-            bool success = await authManager.SignUpWithEmail(email, password);
-            if (success)
+            // 이메일 중복 체크
+            bool emailExists = await authManager.IsEmailRegistered(email);
+            if (emailExists)
             {
-                ShowSignupStatus("회원가입 성공! 로그인해주세요.", Color.green);
+                ShowSignupStatus("이미 가입된 이메일입니다.", Color.red);
+                return;
+            }
+            
+            // 인증번호 생성 및 전송
+            string code = GenerateVerificationCode();
+            bool emailSent = await SendVerificationEmail(email, code);
+            
+            if (emailSent)
+            {
+                ShowSignupStatus("인증번호가 전송되었습니다.", Color.green);
                 
-                // 2초 후 로그인 패널로 이동
-                await System.Threading.Tasks.Task.Delay(2000);
-                ShowLoginPanel();
+                // 1초 후 인증번호 패널로 이동
+                await System.Threading.Tasks.Task.Delay(1000);
+                ShowVerificationPanel(email, password, code);
             }
             else
             {
-                ShowSignupStatus("회원가입 실패. 이미 가입된 이메일이거나 네트워크 오류입니다.", Color.red);
+                ShowSignupStatus("인증번호 전송에 실패했습니다. 다시 시도해주세요.", Color.red);
             }
         }
         catch (System.Exception e)
@@ -537,6 +622,175 @@ public class LobbyUIManager : MonoBehaviour
             loginStatusText.text = "";
         if (signupStatusText != null)
             signupStatusText.text = "";
+    }
+    
+    #endregion
+    
+    #region 인증번호 관련 메서드
+    
+    private string GenerateVerificationCode()
+    {
+        // 6자리 랜덤 숫자 생성
+        System.Random random = new System.Random();
+        return random.Next(100000, 999999).ToString();
+    }
+    
+    private async Task<bool> SendVerificationEmail(string email, string code)
+    {
+        try
+        {
+            if (emailService == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[Verification] EmailService가 없습니다!");
+                return false;
+            }
+            
+            if (enableDebugLogs)
+                Debug.Log($"[Verification] 인증번호 전송 시작: {email}");
+            
+            // EmailService를 통한 실제 이메일 전송
+            bool success = await emailService.SendVerificationEmail(email, code);
+            
+            if (success)
+            {
+                if (enableDebugLogs)
+                    Debug.Log($"[Verification] 인증번호 전송 완료: {email}");
+            }
+            else
+            {
+                if (enableDebugLogs)
+                    Debug.LogError($"[Verification] 인증번호 전송 실패: {email}");
+            }
+            
+            return success;
+        }
+        catch (System.Exception e)
+        {
+            if (enableDebugLogs)
+                Debug.LogError($"[Verification] 이메일 전송 오류: {e}");
+            return false;
+        }
+    }
+    
+    private async void OnVerifyCodeClicked()
+    {
+        if (isProcessing) return;
+        
+        string inputCode = verificationCodeInput?.text?.Trim();
+        
+        if (string.IsNullOrEmpty(inputCode))
+        {
+            UpdateVerificationStatus("인증번호를 입력해주세요.", Color.red);
+            return;
+        }
+        
+        if (inputCode != verificationCode)
+        {
+            UpdateVerificationStatus("인증번호가 일치하지 않습니다.", Color.red);
+            return;
+        }
+        
+        isProcessing = true;
+        SetVerificationButtonsEnabled(false);
+        UpdateVerificationStatus("인증 중...", Color.yellow);
+        
+        try
+        {
+            // Firebase 회원가입 실행
+            bool success = await authManager.SignUpWithEmail(pendingEmail, pendingPassword);
+            
+            if (success)
+            {
+                UpdateVerificationStatus("인증 완료! 회원가입이 성공했습니다.", Color.green);
+                
+                // 인증번호 UI 비활성화
+                isVerificationActive = false;
+                
+                // 2초 후 로그인 패널로 이동
+                await System.Threading.Tasks.Task.Delay(2000);
+                ShowLoginPanel();
+            }
+            else
+            {
+                UpdateVerificationStatus("회원가입에 실패했습니다. 다시 시도해주세요.", Color.red);
+            }
+        }
+        catch (System.Exception e)
+        {
+            UpdateVerificationStatus($"오류가 발생했습니다: {e.Message}", Color.red);
+            if (enableDebugLogs)
+                Debug.LogError($"인증 오류: {e}");
+        }
+        finally
+        {
+            isProcessing = false;
+            SetVerificationButtonsEnabled(true);
+        }
+    }
+    
+    private async void OnResendCodeClicked()
+    {
+        if (isProcessing) return;
+        
+        isProcessing = true;
+        SetVerificationButtonsEnabled(false);
+        UpdateVerificationStatus("인증번호 재전송 중...", Color.yellow);
+        
+        try
+        {
+            // 새 인증번호 생성
+            string newCode = GenerateVerificationCode();
+            verificationCode = newCode;
+            
+            // 이메일 재전송
+            bool emailSent = await SendVerificationEmail(pendingEmail, newCode);
+            
+            if (emailSent)
+            {
+                UpdateVerificationStatus("인증번호가 재전송되었습니다.", Color.green);
+                verificationTimer = 300f; // 타이머 리셋
+            }
+            else
+            {
+                UpdateVerificationStatus("인증번호 재전송에 실패했습니다.", Color.red);
+            }
+        }
+        catch (System.Exception e)
+        {
+            UpdateVerificationStatus($"재전송 오류: {e.Message}", Color.red);
+            if (enableDebugLogs)
+                Debug.LogError($"재전송 오류: {e}");
+        }
+        finally
+        {
+            isProcessing = false;
+            SetVerificationButtonsEnabled(true);
+        }
+    }
+    
+    private void OnBackToSignupClicked()
+    {
+        ShowSignupPanel();
+    }
+    
+    private void UpdateVerificationStatus(string message, Color color)
+    {
+        if (verificationStatusText != null)
+        {
+            verificationStatusText.text = message;
+            verificationStatusText.color = color;
+        }
+    }
+    
+    private void SetVerificationButtonsEnabled(bool enabled)
+    {
+        if (verifyCodeButton != null)
+            verifyCodeButton.interactable = enabled;
+        if (resendCodeButton != null)
+            resendCodeButton.interactable = enabled;
+        if (backToSignupButton != null)
+            backToSignupButton.interactable = enabled;
     }
     
     #endregion

@@ -100,7 +100,7 @@ public class VerificationCodeManager : MonoBehaviour
             // 이메일 전송
             if (emailService != null)
             {
-                bool emailSent = await emailService.SendVerificationEmail(email, code, GetCurrentExpirySeconds());
+                bool emailSent = await emailService.SendVerificationEmail(email, code);
                 if (!emailSent)
                 {
                     if (enableDebugLogs)

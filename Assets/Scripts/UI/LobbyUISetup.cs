@@ -19,11 +19,14 @@ public class LobbyUISetup : MonoBehaviour
         // 회원가입 패널 생성
         GameObject signupPanel = CreateSignupPanel(canvas);
         
+        // 인증번호 패널 생성
+        GameObject verificationPanel = CreateVerificationPanel(canvas);
+        
         // 메인 메뉴 패널 생성
         GameObject mainMenuPanel = CreateMainMenuPanel(canvas);
         
         // LobbyUIManager 설정
-        SetupLobbyUIManager(loginPanel, signupPanel, mainMenuPanel);
+        SetupLobbyUIManager(loginPanel, signupPanel, verificationPanel, mainMenuPanel);
         
         Debug.Log("✅ 로비 UI가 성공적으로 생성되었습니다!");
     }
@@ -107,6 +110,39 @@ public class LobbyUISetup : MonoBehaviour
         
         // 상태 텍스트
         CreateText("SignupStatusText", panel, "", new Vector2(0, -200), new Vector2(700, 50), 22, Color.red);
+        
+        return panel;
+    }
+    
+    private GameObject CreateVerificationPanel(GameObject parent)
+    {
+        GameObject panel = CreatePanel("VerificationPanel", parent, new Vector2(800, 1000));
+        panel.SetActive(false);
+        
+        // 제목
+        CreateText("VerificationTitle", panel, "이메일 인증", new Vector2(0, 400), new Vector2(500, 100), 48, Color.white);
+        
+        // 이메일 정보
+        CreateText("VerificationEmailText", panel, "인증번호가 전송되었습니다.", new Vector2(0, 300), new Vector2(700, 50), 24, Color.yellow);
+        
+        // 인증번호 입력
+        CreateText("VerificationCodeLabel", panel, "인증번호", new Vector2(-300, 200), new Vector2(150, 50), 24, Color.white);
+        GameObject codeInput = CreateInputField("VerificationCodeInput", panel, new Vector2(0, 200), new Vector2(450, 60), "인증번호를 입력하세요");
+        
+        // 인증 버튼
+        CreateButton("VerifyCodeButton", panel, "인증하기", new Vector2(0, 100), new Vector2(400, 70), Color.blue);
+        
+        // 재전송 버튼
+        CreateButton("ResendCodeButton", panel, "인증번호 재전송", new Vector2(0, 20), new Vector2(400, 70), Color.gray);
+        
+        // 회원가입으로 돌아가기 버튼
+        CreateButton("BackToSignupButton", panel, "회원가입으로 돌아가기", new Vector2(0, -60), new Vector2(400, 70), Color.red);
+        
+        // 상태 텍스트
+        CreateText("VerificationStatusText", panel, "", new Vector2(0, -140), new Vector2(700, 50), 22, Color.white);
+        
+        // 타이머 텍스트
+        CreateText("TimerText", panel, "남은 시간: 5:00", new Vector2(0, -200), new Vector2(300, 50), 20, Color.green);
         
         return panel;
     }
@@ -262,14 +298,20 @@ public class LobbyUISetup : MonoBehaviour
         textComponent.fontStyle = FontStyles.Bold;
     }
     
-    private void SetupLobbyUIManager(GameObject loginPanel, GameObject signupPanel, GameObject mainMenuPanel)
+    private void SetupLobbyUIManager(GameObject loginPanel, GameObject signupPanel, GameObject verificationPanel, GameObject mainMenuPanel)
     {
+        // EmailService 자동 생성
+        GameObject emailServiceObj = new GameObject("EmailService");
+        var emailService = emailServiceObj.AddComponent<EmailService>();
+        
+        // LobbyUIManager 생성
         GameObject managerObj = new GameObject("LobbyUIManager");
         var lobbyUIManager = managerObj.AddComponent<LobbyUIManager>();
         
         // 패널 연결
         lobbyUIManager.loginPanel = loginPanel;
         lobbyUIManager.signupPanel = signupPanel;
+        lobbyUIManager.verificationPanel = verificationPanel;
         lobbyUIManager.mainMenuPanel = mainMenuPanel;
         
         // 로그인 UI 연결
@@ -287,6 +329,15 @@ public class LobbyUISetup : MonoBehaviour
         lobbyUIManager.signupButton = signupPanel.transform.Find("SignupButton")?.GetComponent<Button>();
         lobbyUIManager.goToLoginButton = signupPanel.transform.Find("GoToLoginButton")?.GetComponent<Button>();
         lobbyUIManager.signupStatusText = signupPanel.transform.Find("SignupStatusText")?.GetComponent<TextMeshProUGUI>();
+        
+        // 인증번호 UI 연결
+        lobbyUIManager.verificationCodeInput = verificationPanel.transform.Find("VerificationCodeInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.verifyCodeButton = verificationPanel.transform.Find("VerifyCodeButton")?.GetComponent<Button>();
+        lobbyUIManager.resendCodeButton = verificationPanel.transform.Find("ResendCodeButton")?.GetComponent<Button>();
+        lobbyUIManager.backToSignupButton = verificationPanel.transform.Find("BackToSignupButton")?.GetComponent<Button>();
+        lobbyUIManager.verificationStatusText = verificationPanel.transform.Find("VerificationStatusText")?.GetComponent<TextMeshProUGUI>();
+        lobbyUIManager.verificationEmailText = verificationPanel.transform.Find("VerificationEmailText")?.GetComponent<TextMeshProUGUI>();
+        lobbyUIManager.timerText = verificationPanel.transform.Find("TimerText")?.GetComponent<TextMeshProUGUI>();
         
         // 메인 메뉴 UI 연결
         lobbyUIManager.welcomeText = mainMenuPanel.transform.Find("WelcomeText")?.GetComponent<TextMeshProUGUI>();
