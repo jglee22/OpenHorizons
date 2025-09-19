@@ -13,13 +13,13 @@ public class EmailService : MonoBehaviour
     [Header("SMTP 설정")]
     public string smtpServer = "smtp.gmail.com";
     public int smtpPort = 587;
-    public string senderEmail = "your-email@gmail.com";
-    public string senderPassword = "your-app-password";
+    public string senderEmail = "your-email@gmail.com"; // 실제 Gmail 주소 입력
+    public string senderPassword = "your-app-password"; // Gmail 앱 비밀번호 입력
     public bool enableSSL = true;
     
     [Header("디버그 설정")]
     public bool enableDebugLogs = true;
-    public bool useSimulation = true; // 실제 전송 대신 시뮬레이션 사용
+    public bool useSimulation = false; // 실제 전송 사용
     
     /// <summary>
     /// 인증번호 이메일 전송

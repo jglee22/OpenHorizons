@@ -22,14 +22,8 @@ public class LobbyUISetup : MonoBehaviour
         // 메인 메뉴 패널 생성
         GameObject mainMenuPanel = CreateMainMenuPanel(canvas);
         
-        // 이메일 인증 패널 생성
-        GameObject emailVerificationPanel = CreateEmailVerificationPanel(canvas);
-        
-        // 인증번호 패널 생성
-        GameObject verificationCodePanel = CreateVerificationCodePanel(canvas);
-        
         // LobbyUIManager 설정
-        SetupLobbyUIManager(loginPanel, signupPanel, mainMenuPanel, emailVerificationPanel, verificationCodePanel);
+        SetupLobbyUIManager(loginPanel, signupPanel, mainMenuPanel);
         
         Debug.Log("✅ 로비 UI가 성공적으로 생성되었습니다!");
     }
@@ -61,11 +55,11 @@ public class LobbyUISetup : MonoBehaviour
         
         // 이메일 입력
         CreateText("EmailLabel", panel, "이메일", new Vector2(-300, 220), new Vector2(150, 50), 24, Color.white);
-        GameObject emailInput = CreateInputField("EmailInput", panel, new Vector2(0, 220), new Vector2(450, 60), "이메일을 입력하세요");
+        GameObject emailInput = CreateInputField("LoginEmailInput", panel, new Vector2(0, 220), new Vector2(450, 60), "이메일을 입력하세요");
         
         // 비밀번호 입력
         CreateText("PasswordLabel", panel, "비밀번호", new Vector2(-300, 120), new Vector2(150, 50), 24, Color.white);
-        GameObject passwordInput = CreateInputField("PasswordInput", panel, new Vector2(0, 120), new Vector2(450, 60), "비밀번호를 입력하세요");
+        GameObject passwordInput = CreateInputField("LoginPasswordInput", panel, new Vector2(0, 120), new Vector2(450, 60), "비밀번호를 입력하세요");
         passwordInput.GetComponent<TMP_InputField>().contentType = TMP_InputField.ContentType.Password;
         
         // 자동 로그인 체크박스
@@ -268,78 +262,37 @@ public class LobbyUISetup : MonoBehaviour
         textComponent.fontStyle = FontStyles.Bold;
     }
     
-    private void SetupLobbyUIManager(GameObject loginPanel, GameObject signupPanel, GameObject mainMenuPanel, GameObject emailVerificationPanel, GameObject verificationCodePanel)
+    private void SetupLobbyUIManager(GameObject loginPanel, GameObject signupPanel, GameObject mainMenuPanel)
     {
         GameObject managerObj = new GameObject("LobbyUIManager");
-        LobbyUIManager manager = managerObj.AddComponent<LobbyUIManager>();
+        var lobbyUIManager = managerObj.AddComponent<LobbyUIManager>();
         
-        // 인증번호 매니저 & UI 자동 생성
-        GameObject codeManagerObj = new GameObject("VerificationCodeManager");
-        var codeManager = codeManagerObj.AddComponent<VerificationCodeManager>();
-        GameObject codeUIObj = new GameObject("VerificationCodeUI");
-        var codeUI = codeUIObj.AddComponent<VerificationCodeUI>();
+        // 패널 연결
+        lobbyUIManager.loginPanel = loginPanel;
+        lobbyUIManager.signupPanel = signupPanel;
+        lobbyUIManager.mainMenuPanel = mainMenuPanel;
         
-        // 이메일 서비스 자동 생성
-        GameObject emailServiceObj = new GameObject("EmailService");
-        var emailService = emailServiceObj.AddComponent<EmailService>();
+        // 로그인 UI 연결
+        lobbyUIManager.loginEmailInput = loginPanel.transform.Find("LoginEmailInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.loginPasswordInput = loginPanel.transform.Find("LoginPasswordInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.rememberMeToggle = loginPanel.transform.Find("RememberMeToggle")?.GetComponent<Toggle>();
+        lobbyUIManager.loginButton = loginPanel.transform.Find("LoginButton")?.GetComponent<Button>();
+        lobbyUIManager.goToSignupButton = loginPanel.transform.Find("GoToSignupButton")?.GetComponent<Button>();
+        lobbyUIManager.loginStatusText = loginPanel.transform.Find("LoginStatusText")?.GetComponent<TextMeshProUGUI>();
         
-        // VerificationCodeUI에 UI 패널 연결
-        codeUI.verificationCodePanel = verificationCodePanel;
-        codeUI.codeInputField = verificationCodePanel.transform.Find("CodeInputField")?.GetComponent<TMP_InputField>();
-        codeUI.verifyButton = verificationCodePanel.transform.Find("VerifyCodeButton")?.GetComponent<Button>();
-        codeUI.resendButton = verificationCodePanel.transform.Find("ResendCodeButton")?.GetComponent<Button>();
-        codeUI.backButton = verificationCodePanel.transform.Find("BackToSignupButton")?.GetComponent<Button>();
-        codeUI.statusText = verificationCodePanel.transform.Find("CodeStatusText")?.GetComponent<TextMeshProUGUI>();
-        codeUI.emailText = verificationCodePanel.transform.Find("CodeEmailText")?.GetComponent<TextMeshProUGUI>();
-        codeUI.timerText = verificationCodePanel.transform.Find("TimerText")?.GetComponent<TextMeshProUGUI>();
-        codeUI.attemptsText = verificationCodePanel.transform.Find("AttemptsText")?.GetComponent<TextMeshProUGUI>();
-
-        // UI 요소들 연결
-        manager.loginPanel = loginPanel;
-        manager.signupPanel = signupPanel;
-        manager.mainMenuPanel = mainMenuPanel;
-        manager.emailVerificationPanel = emailVerificationPanel;
-        manager.verificationCodePanel = verificationCodePanel;
+        // 회원가입 UI 연결
+        lobbyUIManager.signupEmailInput = signupPanel.transform.Find("SignupEmailInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.signupPasswordInput = signupPanel.transform.Find("SignupPasswordInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.signupConfirmPasswordInput = signupPanel.transform.Find("SignupConfirmPasswordInput")?.GetComponent<TMP_InputField>();
+        lobbyUIManager.signupButton = signupPanel.transform.Find("SignupButton")?.GetComponent<Button>();
+        lobbyUIManager.goToLoginButton = signupPanel.transform.Find("GoToLoginButton")?.GetComponent<Button>();
+        lobbyUIManager.signupStatusText = signupPanel.transform.Find("SignupStatusText")?.GetComponent<TextMeshProUGUI>();
         
-        // 로그인 UI 요소들
-        manager.loginEmailInput = loginPanel.transform.Find("EmailInput")?.GetComponent<TMP_InputField>();
-        manager.loginPasswordInput = loginPanel.transform.Find("PasswordInput")?.GetComponent<TMP_InputField>();
-        manager.loginButton = loginPanel.transform.Find("LoginButton")?.GetComponent<Button>();
-        manager.goToSignupButton = loginPanel.transform.Find("GoToSignupButton")?.GetComponent<Button>();
-        manager.loginStatusText = loginPanel.transform.Find("LoginStatusText")?.GetComponent<TextMeshProUGUI>();
-        
-        // 회원가입 UI 요소들
-        manager.signupEmailInput = signupPanel.transform.Find("SignupEmailInput")?.GetComponent<TMP_InputField>();
-        manager.signupPasswordInput = signupPanel.transform.Find("SignupPasswordInput")?.GetComponent<TMP_InputField>();
-        manager.signupConfirmPasswordInput = signupPanel.transform.Find("SignupConfirmPasswordInput")?.GetComponent<TMP_InputField>();
-        manager.signupButton = signupPanel.transform.Find("SignupButton")?.GetComponent<Button>();
-        manager.goToLoginButton = signupPanel.transform.Find("GoToLoginButton")?.GetComponent<Button>();
-        manager.signupStatusText = signupPanel.transform.Find("SignupStatusText")?.GetComponent<TextMeshProUGUI>();
-        
-        // 메인 메뉴 UI 요소들
-        manager.welcomeText = mainMenuPanel.transform.Find("WelcomeText")?.GetComponent<TextMeshProUGUI>();
-        manager.logoutButton = mainMenuPanel.transform.Find("LogoutButton")?.GetComponent<Button>();
-        manager.startGameButton = mainMenuPanel.transform.Find("StartGameButton")?.GetComponent<Button>();
-        manager.settingsButton = mainMenuPanel.transform.Find("SettingsButton")?.GetComponent<Button>();
-        
-        // 자동 로그인 체크박스
-        manager.rememberMeToggle = loginPanel.transform.Find("RememberMeToggle")?.GetComponent<Toggle>();
-        
-        // 이메일 인증 UI 요소들
-        manager.verificationStatusText = emailVerificationPanel.transform.Find("VerificationStatusText")?.GetComponent<TextMeshProUGUI>();
-        manager.resendVerificationButton = emailVerificationPanel.transform.Find("ResendVerificationButton")?.GetComponent<Button>();
-        manager.checkVerificationButton = emailVerificationPanel.transform.Find("CheckVerificationButton")?.GetComponent<Button>();
-        manager.backToLoginButton = emailVerificationPanel.transform.Find("BackToLoginButton")?.GetComponent<Button>();
-        
-        // 인증번호 UI 요소들
-        manager.codeInputField = verificationCodePanel.transform.Find("CodeInputField")?.GetComponent<TMP_InputField>();
-        manager.verifyCodeButton = verificationCodePanel.transform.Find("VerifyCodeButton")?.GetComponent<Button>();
-        manager.resendCodeButton = verificationCodePanel.transform.Find("ResendCodeButton")?.GetComponent<Button>();
-        manager.backToSignupButton = verificationCodePanel.transform.Find("BackToSignupButton")?.GetComponent<Button>();
-        manager.codeStatusText = verificationCodePanel.transform.Find("CodeStatusText")?.GetComponent<TextMeshProUGUI>();
-        manager.codeEmailText = verificationCodePanel.transform.Find("CodeEmailText")?.GetComponent<TextMeshProUGUI>();
-        manager.timerText = verificationCodePanel.transform.Find("TimerText")?.GetComponent<TextMeshProUGUI>();
-        manager.attemptsText = verificationCodePanel.transform.Find("AttemptsText")?.GetComponent<TextMeshProUGUI>();
+        // 메인 메뉴 UI 연결
+        lobbyUIManager.welcomeText = mainMenuPanel.transform.Find("WelcomeText")?.GetComponent<TextMeshProUGUI>();
+        lobbyUIManager.logoutButton = mainMenuPanel.transform.Find("LogoutButton")?.GetComponent<Button>();
+        lobbyUIManager.startGameButton = mainMenuPanel.transform.Find("StartGameButton")?.GetComponent<Button>();
+        lobbyUIManager.settingsButton = mainMenuPanel.transform.Find("SettingsButton")?.GetComponent<Button>();
         
         Debug.Log("✅ LobbyUIManager 설정 완료!");
     }

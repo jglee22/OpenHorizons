@@ -268,6 +268,9 @@ public class VerificationCodeUI : MonoBehaviour
         }
         timer = seconds;
         isTimerActive = true;
+        
+        if (enableDebugLogs)
+            Debug.Log($"[VerificationCodeUI] 타이머 시작: {seconds}초, isTimerActive: {isTimerActive}");
     }
     
     /// <summary>

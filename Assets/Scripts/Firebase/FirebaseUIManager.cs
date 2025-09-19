@@ -5,14 +5,13 @@ using Firebase.Auth;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Firebase UI 관리자
+/// Firebase 로그인 UI 관리자
 /// </summary>
 public class FirebaseUIManager : MonoBehaviour
 {
     [Header("UI 요소")]
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
-    public Button signUpButton;
     public Button signInButton;
     public Button signOutButton;
     public Button guestButton;
@@ -32,8 +31,6 @@ public class FirebaseUIManager : MonoBehaviour
     
     private void SetupUI()
     {
-        if (signUpButton != null)
-            signUpButton.onClick.AddListener(OnSignUpClicked);
         if (signInButton != null)
             signInButton.onClick.AddListener(OnSignInClicked);
         if (signOutButton != null)
@@ -44,32 +41,6 @@ public class FirebaseUIManager : MonoBehaviour
         UpdateUserInfo();
     }
     
-    private async void OnSignUpClicked()
-    {
-        if (authManager == null) return;
-        
-        string email = emailInput?.text?.Trim();
-        string password = passwordInput?.text;
-        
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
-        {
-            ShowMessage("이메일과 비밀번호를 입력해주세요.");
-            return;
-        }
-        
-        ShowMessage("회원가입 중...");
-        bool success = await authManager.SignUpWithEmail(email, password);
-        
-        if (success)
-        {
-            ShowMessage("회원가입 성공!");
-            UpdateUserInfo();
-        }
-        else
-        {
-            ShowMessage("회원가입 실패");
-        }
-    }
     
     private async void OnSignInClicked()
     {
