@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using AudioSystem;
+using System.Threading.Tasks;
 
 /// <summary>
 /// 인벤토리 전체를 관리하는 매니저
@@ -17,10 +18,21 @@ public class InventoryManager : MonoBehaviour
     [Header("디버그")]
     [SerializeField] private bool showDebugInfo = true;
     
+    [Header("Firebase 연동")]
+    [SerializeField] private bool enableFirebaseSync = true;
+    [SerializeField] private bool autoSaveOnChange = true;
+    [SerializeField] private bool autoLoadOnStart = true;
+    
+    // Firebase 참조
+    private FirebaseInventoryManager firebaseInventoryManager;
+    
     // 이벤트
     public System.Action OnInventoryChanged;
+    public System.Action OnInventorySaved;
+    public System.Action OnInventoryLoaded;
+    public System.Action<string> OnFirebaseError;
     
-    private void Start()
+    private async void Start()
     {
         Debug.Log("InventoryManager Start() 호출됨");
         InitializeInventory();
@@ -29,6 +41,17 @@ public class InventoryManager : MonoBehaviour
         if (inventoryUI == null)
         {
             inventoryUI = FindObjectOfType<InventoryUI>();
+        }
+        
+        // Firebase 매니저 초기화
+        InitializeFirebase();
+        
+        // Firebase 초기화를 기다린 후 인벤토리 불러오기
+        if (enableFirebaseSync && autoLoadOnStart)
+        {
+            // Firebase 초기화 대기
+            await System.Threading.Tasks.Task.Delay(2000);
+            await LoadInventoryFromFirebase();
         }
         
         Debug.Log($"InventoryManager 초기화 완료 - 슬롯 수: {slots?.Count ?? 0}");
@@ -75,7 +98,7 @@ public class InventoryManager : MonoBehaviour
             {
                 if (slots[i].AddItem(item, amount))
                 {
-                    OnInventoryChanged?.Invoke();
+                    OnInventoryChangedInternal();
                     if (showDebugInfo)
                     {
                         Debug.Log($"아이템 추가됨: {item.itemName} x{amount} (슬롯 {i})");
@@ -92,7 +115,7 @@ public class InventoryManager : MonoBehaviour
             {
                 if (slots[i].AddItem(item, amount))
                 {
-                    OnInventoryChanged?.Invoke();
+                    OnInventoryChangedInternal();
                     if (showDebugInfo)
                     {
                         Debug.Log($"아이템 추가됨: {item.itemName} x{amount} (새 슬롯 {i})");
@@ -131,7 +154,7 @@ public class InventoryManager : MonoBehaviour
                     
                     if (remainingToRemove <= 0)
                     {
-                        OnInventoryChanged?.Invoke();
+                        OnInventoryChangedInternal();
                         if (showDebugInfo)
                         {
                             Debug.Log($"아이템 제거됨: {itemName} x{amount}");
@@ -248,7 +271,7 @@ public class InventoryManager : MonoBehaviour
             // 소비 가능한 아이템인 경우 수량 감소
             if (slot.RemoveItem(1))
             {
-                OnInventoryChanged?.Invoke();
+                OnInventoryChangedInternal();
                 if (showDebugInfo)
                 {
                     Debug.Log($"아이템 사용됨: {itemName}");
@@ -329,7 +352,7 @@ public class InventoryManager : MonoBehaviour
         if (!slot.isOccupied) return false;
         
         slot.ClearSlot();
-        OnInventoryChanged?.Invoke();
+        OnInventoryChangedInternal();
         
         return true;
     }
@@ -368,9 +391,264 @@ public class InventoryManager : MonoBehaviour
         bool result = slot.AddItem(item, quantity);
         if (result)
         {
-            OnInventoryChanged?.Invoke();
+            OnInventoryChangedInternal();
         }
         
         return result;
     }
+    
+    #region Firebase 연동
+    
+    /// <summary>
+    /// Firebase 매니저 초기화
+    /// </summary>
+    private void InitializeFirebase()
+    {
+        if (!enableFirebaseSync) return;
+        
+        // FirebaseInventoryManager 찾기 또는 생성
+        firebaseInventoryManager = FindObjectOfType<FirebaseInventoryManager>();
+        if (firebaseInventoryManager == null)
+        {
+            GameObject firebaseObj = new GameObject("FirebaseInventoryManager");
+            firebaseInventoryManager = firebaseObj.AddComponent<FirebaseInventoryManager>();
+        }
+        
+        // 이벤트 구독
+        firebaseInventoryManager.OnInventoryLoaded += OnFirebaseInventoryLoaded;
+        firebaseInventoryManager.OnInventorySaved += OnFirebaseInventorySaved;
+        firebaseInventoryManager.OnError += OnFirebaseInventoryError;
+        
+        if (showDebugInfo)
+            Debug.Log("[InventoryManager] Firebase 연동 초기화 완료");
+    }
+    
+    /// <summary>
+    /// Firebase에서 인벤토리 불러오기
+    /// </summary>
+    public async Task<bool> LoadInventoryFromFirebase()
+    {
+        if (!enableFirebaseSync)
+        {
+            if (showDebugInfo)
+                Debug.LogWarning("[InventoryManager] Firebase 연동이 비활성화되어 있습니다.");
+            return false;
+        }
+        
+        if (firebaseInventoryManager == null)
+        {
+            if (showDebugInfo)
+                Debug.LogWarning("[InventoryManager] FirebaseInventoryManager가 초기화되지 않았습니다.");
+            return false;
+        }
+        
+        // Firebase Auth 상태 확인
+        if (Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser == null)
+        {
+            if (showDebugInfo)
+                Debug.LogWarning("[InventoryManager] 로그인된 사용자가 없습니다.");
+            return false;
+        }
+        
+        try
+        {
+            if (showDebugInfo)
+                Debug.Log("[InventoryManager] Firebase에서 인벤토리 불러오기 시작...");
+            
+            var loadedSlots = await firebaseInventoryManager.LoadInventory();
+            
+            if (loadedSlots != null && loadedSlots.Count > 0)
+            {
+                // 기존 인벤토리 초기화
+                InitializeInventory();
+                
+                // 불러온 데이터로 인벤토리 복원
+                for (int i = 0; i < Mathf.Min(loadedSlots.Count, slots.Count); i++)
+                {
+                    if (loadedSlots[i].isOccupied)
+                    {
+                        slots[i] = loadedSlots[i];
+                    }
+                }
+                
+                OnInventoryChanged?.Invoke();
+                OnInventoryLoaded?.Invoke();
+                
+                if (showDebugInfo)
+                    Debug.Log($"[InventoryManager] Firebase에서 인벤토리 불러오기 완료: {loadedSlots.Count}개 슬롯");
+                
+                return true;
+            }
+            else
+            {
+                if (showDebugInfo)
+                    Debug.Log("[InventoryManager] 저장된 인벤토리가 없습니다.");
+                return false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            if (showDebugInfo)
+                Debug.LogError($"[InventoryManager] Firebase 인벤토리 불러오기 실패: {e.Message}");
+            
+            OnFirebaseError?.Invoke($"인벤토리 불러오기 실패: {e.Message}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Firebase에 인벤토리 저장
+    /// </summary>
+    public async Task<bool> SaveInventoryToFirebase()
+    {
+        if (!enableFirebaseSync || firebaseInventoryManager == null)
+        {
+            if (showDebugInfo)
+                Debug.LogWarning("[InventoryManager] Firebase 연동이 비활성화되어 있습니다.");
+            return false;
+        }
+        
+        try
+        {
+            if (showDebugInfo)
+                Debug.Log("[InventoryManager] Firebase에 인벤토리 저장 시작...");
+            
+            bool success = await firebaseInventoryManager.SaveInventory(slots);
+            
+            if (success)
+            {
+                OnInventorySaved?.Invoke();
+                if (showDebugInfo)
+                    Debug.Log("[InventoryManager] Firebase에 인벤토리 저장 완료");
+            }
+            
+            return success;
+        }
+        catch (System.Exception e)
+        {
+            if (showDebugInfo)
+                Debug.LogError($"[InventoryManager] Firebase 인벤토리 저장 실패: {e.Message}");
+            
+            OnFirebaseError?.Invoke($"인벤토리 저장 실패: {e.Message}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Firebase 이벤트 핸들러들
+    /// </summary>
+    private void OnFirebaseInventoryLoaded(List<InventorySlot> loadedSlots)
+    {
+        if (showDebugInfo)
+            Debug.Log($"[InventoryManager] Firebase에서 인벤토리 로드됨: {loadedSlots.Count}개 슬롯");
+    }
+    
+    private void OnFirebaseInventorySaved(bool success)
+    {
+        if (showDebugInfo)
+            Debug.Log($"[InventoryManager] Firebase 인벤토리 저장 결과: {success}");
+    }
+    
+    private void OnFirebaseInventoryError(string error)
+    {
+        if (showDebugInfo)
+            Debug.LogError($"[InventoryManager] Firebase 오류: {error}");
+        
+        OnFirebaseError?.Invoke(error);
+    }
+    
+    /// <summary>
+    /// 인벤토리 변경 시 자동 저장
+    /// </summary>
+    private async void OnInventoryChangedInternal()
+    {
+        OnInventoryChanged?.Invoke();
+        
+        // 자동 저장 활성화 시 Firebase에 저장
+        if (enableFirebaseSync && autoSaveOnChange && firebaseInventoryManager != null)
+        {
+            await SaveInventoryToFirebase();
+        }
+    }
+    
+    #endregion
+    
+    #region 기존 메서드 수정 (자동 저장 연동)
+    
+    /// <summary>
+    /// 아이템 추가 (자동 저장 연동)
+    /// </summary>
+    public bool AddItemWithAutoSave(Item item, int amount = 1)
+    {
+        bool result = AddItem(item, amount);
+        if (result)
+        {
+            OnInventoryChangedInternal();
+        }
+        return result;
+    }
+    
+    /// <summary>
+    /// 아이템 제거 (자동 저장 연동)
+    /// </summary>
+    public bool RemoveItemWithAutoSave(string itemName, int amount = 1)
+    {
+        bool result = RemoveItem(itemName, amount);
+        if (result)
+        {
+            OnInventoryChangedInternal();
+        }
+        return result;
+    }
+    
+    /// <summary>
+    /// 아이템 사용 (자동 저장 연동)
+    /// </summary>
+    public bool UseItemWithAutoSave(int slotIndex)
+    {
+        bool result = UseItem(slotIndex);
+        if (result)
+        {
+            OnInventoryChangedInternal();
+        }
+        return result;
+    }
+    
+    #endregion
+    
+    #region 수동 저장/불러오기 메서드
+    
+    /// <summary>
+    /// 수동으로 인벤토리 저장
+    /// </summary>
+    [ContextMenu("Firebase에 인벤토리 저장")]
+    public async void SaveInventoryManually()
+    {
+        await SaveInventoryToFirebase();
+    }
+    
+    /// <summary>
+    /// 수동으로 인벤토리 불러오기
+    /// </summary>
+    [ContextMenu("Firebase에서 인벤토리 불러오기")]
+    public async void LoadInventoryManually()
+    {
+        await LoadInventoryFromFirebase();
+    }
+    
+    /// <summary>
+    /// Firebase 인벤토리 데이터 삭제
+    /// </summary>
+    [ContextMenu("Firebase 인벤토리 데이터 삭제")]
+    public async void DeleteFirebaseInventory()
+    {
+        if (firebaseInventoryManager != null)
+        {
+            await firebaseInventoryManager.DeleteInventory();
+            if (showDebugInfo)
+                Debug.Log("[InventoryManager] Firebase 인벤토리 데이터가 삭제되었습니다.");
+        }
+    }
+    
+    #endregion
 }

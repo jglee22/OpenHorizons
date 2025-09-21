@@ -259,6 +259,9 @@ public class LobbyUISetup : MonoBehaviour
         inputField.textComponent = textComponent;
         inputField.placeholder = placeholderText;
         
+        // TextViewport 설정 (TMP_InputField 필수)
+        inputField.textViewport = inputObj.GetComponent<RectTransform>();
+        
         return inputObj;
     }
     

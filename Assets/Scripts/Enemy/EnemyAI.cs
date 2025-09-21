@@ -70,6 +70,13 @@ public class EnemyAI : MonoBehaviour
             navAgent = gameObject.AddComponent<NavMeshAgent>();
         }
         
+        // NavMeshAgent가 NavMesh 위에 있는지 확인
+        if (!IsOnNavMesh())
+        {
+            Debug.LogWarning($"[EnemyAI] {gameObject.name}이 NavMesh 위에 있지 않습니다. NavMesh 위로 이동합니다.");
+            MoveToNearestNavMesh();
+        }
+        
         // Animator 자동 찾기
         if (animator == null)
         {
@@ -189,7 +196,10 @@ public class EnemyAI : MonoBehaviour
             NavMeshHit hit;
             if (NavMesh.SamplePosition(randomDirection, out hit, 5f, NavMesh.AllAreas))
             {
-                navAgent.SetDestination(hit.position);
+                if (IsNavMeshAgentValid())
+                {
+                    navAgent.SetDestination(hit.position);
+                }
             }
         }
     }
@@ -211,13 +221,19 @@ public class EnemyAI : MonoBehaviour
         }
         
         // 플레이어를 추적
-        navAgent.SetDestination(player.position);
+        if (IsNavMeshAgentValid())
+        {
+            navAgent.SetDestination(player.position);
+        }
     }
     
     void HandleAttackingState(float distanceToPlayer)
     {
         // 공격 중에는 이동 정지
-        navAgent.ResetPath();
+        if (IsNavMeshAgentValid())
+        {
+            navAgent.ResetPath();
+        }
         
         // 플레이어를 바라보기
         Vector3 direction = (player.position - transform.position).normalized;
@@ -260,7 +276,10 @@ public class EnemyAI : MonoBehaviour
         switch (newState)
         {
             case EnemyState.Idle:
-                navAgent.ResetPath();
+                if (IsNavMeshAgentValid())
+                {
+                    navAgent.ResetPath();
+                }
                 break;
                 
             case EnemyState.Patrolling:
@@ -272,16 +291,25 @@ public class EnemyAI : MonoBehaviour
                 NavMeshHit hit;
                 if (NavMesh.SamplePosition(randomDirection, out hit, 5f, NavMesh.AllAreas))
                 {
-                    navAgent.SetDestination(hit.position);
+                    if (IsNavMeshAgentValid())
+                    {
+                        navAgent.SetDestination(hit.position);
+                    }
                 }
                 break;
                 
             case EnemyState.Chasing:
-                navAgent.SetDestination(player.position);
+                if (IsNavMeshAgentValid())
+                {
+                    navAgent.SetDestination(player.position);
+                }
                 break;
                 
             case EnemyState.Attacking:
-                navAgent.ResetPath();
+                if (IsNavMeshAgentValid())
+                {
+                    navAgent.ResetPath();
+                }
                 break;
         }
         
@@ -402,6 +430,42 @@ public class EnemyAI : MonoBehaviour
         
         // 대안: Invoke 사용
         Invoke(nameof(DestroyEnemy), 3f);
+    }
+    
+    /// <summary>
+    /// NavMesh 위에 있는지 확인
+    /// </summary>
+    private bool IsOnNavMesh()
+    {
+        if (navAgent == null) return false;
+        
+        NavMeshHit hit;
+        return NavMesh.SamplePosition(transform.position, out hit, 0.1f, NavMesh.AllAreas);
+    }
+    
+    /// <summary>
+    /// 가장 가까운 NavMesh 위치로 이동
+    /// </summary>
+    private void MoveToNearestNavMesh()
+    {
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+        {
+            transform.position = hit.position;
+            Debug.Log($"[EnemyAI] {gameObject.name}을 NavMesh 위로 이동했습니다: {hit.position}");
+        }
+        else
+        {
+            Debug.LogError($"[EnemyAI] {gameObject.name} 주변에 NavMesh를 찾을 수 없습니다!");
+        }
+    }
+    
+    /// <summary>
+    /// NavMeshAgent가 활성화되고 NavMesh 위에 있는지 확인
+    /// </summary>
+    private bool IsNavMeshAgentValid()
+    {
+        return navAgent != null && navAgent.enabled && navAgent.isOnNavMesh;
     }
     
     /// <summary>

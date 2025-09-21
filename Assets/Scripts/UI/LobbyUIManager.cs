@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Firebase.Auth;
 using System.Threading.Tasks;
+using UnityEngine.SceneManagement; // For scene loading
 
 /// <summary>
 /// 로비 씬의 로그인/회원가입 UI 관리
@@ -540,10 +541,17 @@ public class LobbyUIManager : MonoBehaviour
     private void OnStartGameClicked()
     {
         if (enableDebugLogs)
-            Debug.Log("게임 시작 버튼 클릭");
+            Debug.Log("게임 시작 버튼 클릭 - Main 씬으로 이동");
         
-        // TODO: 게임 씬으로 이동
-        // SceneManager.LoadScene("GameScene");
+        // Main 씬으로 이동
+        try
+        {
+            SceneManager.LoadScene("Main");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"씬 로드 실패: {e.Message}");
+        }
     }
     
     private void OnSettingsClicked()
