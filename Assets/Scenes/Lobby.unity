@@ -7276,7 +7276,7 @@ MonoBehaviour:
   senderPassword: grwr wklv rczu wazr
   smtpServer: smtp.gmail.com
   smtpPort: 587
-  useSimulation: 0
+  useSimulation: 1
   enableDebugLogs: 1
 --- !u!4 &1639422580
 Transform:
