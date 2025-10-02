@@ -136,41 +136,4 @@ public class GoogleAuthTestUI : MonoBehaviour
         Debug.Log($"Google Auth UI: {message}");
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 400, 300));
-        GUILayout.Label("=== Google 인증 테스트 UI ===", headerStyle);
-        GUILayout.Space(5);
-        
-        if (googleAuth != null && googleAuth.IsSignedIn)
-        {
-            GUILayout.Label("=== 로그인된 사용자 정보 ===", headerStyle);
-            GUILayout.Label($"이메일: {googleAuth.UserEmail}", labelStyle);
-            GUILayout.Label($"사용자ID: {googleAuth.UserId}", labelStyle);
-        }
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 테스트 키 ===", headerStyle);
-        GUILayout.Label("F10: 구글 로그인 테스트", labelStyle);
-        GUILayout.Label("F11: 이메일 회원가입", labelStyle);
-        GUILayout.Label("F12: 이메일 로그인", labelStyle);
-        GUILayout.Label("ESC: 로그아웃", labelStyle);
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 사용법 ===", headerStyle);
-        GUILayout.Label("1. 이메일과 비밀번호 입력", labelStyle);
-        GUILayout.Label("2. Google 회원가입 또는 로그인 버튼 클릭", labelStyle);
-        GUILayout.Label("3. 또는 키보드 단축키 사용", labelStyle);
-        
-        GUILayout.EndArea();
-    }
 }

@@ -35,6 +35,7 @@ public class ItemData : ScriptableObject
     {
         return new Item
         {
+            itemId = this.itemId,
             itemName = this.itemName,
             description = this.description,
             icon = this.icon,

@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3031581629563573180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a397c6b89682f24c836ae62a28716a1, type: 3}
+  m_Name: kill_enemy_quest_Reward
+  m_EditorClassIdentifier: 
+  icon: {fileID: 21300000, guid: 648b7ee6d4e2cb345890b7197ab50497, type: 3}
+  description: "\uCCAD\uB3D9\uC73C\uB85C \uB9CC\uB4E0 \uACAC\uACE0\uD55C \uAC80\uC785\uB2C8\uB2E4."
+  quantity: 0
+  itemName: "\uBE0C\uB860\uC988 \uC18C\uB4DC"
+  itemDescription: "\uCCAD\uB3D9\uC73C\uB85C \uB9CC\uB4E0 \uACAC\uACE0\uD55C \uAC80\uC785\uB2C8\uB2E4."
+  itemType: 3
+  itemIcon: {fileID: 21300000, guid: 648b7ee6d4e2cb345890b7197ab50497, type: 3}
+  itemCount: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89885aabe56e9e84682f3701490242d6, type: 3}
+  m_Name: kill_enemy_quest
+  m_EditorClassIdentifier: 
+  category: {fileID: 11400000, guid: 86442c5f8b044534f9016e12af7b903c, type: 2}
+  icon: {fileID: 0}
+  codeName: kill_enemy_quest
+  displayName: "\uC801 \uCC98\uCE58"
+  description: "\uC801\uC744 \uCC98\uCE58\uD558\uC138\uC694"
+  taskGroups:
+  - tasks:
+    - {fileID: 5358196680902517254}
+  rewards:
+  - {fileID: -3031581629563573180}
+  useAutoComplete: 1
+  isCancelable: 1
+  isSavable: 1
+  acceptionConditions: []
+  cancelConditions: []
+--- !u!114 &5358196680902517254
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69d4ee9c5b9008f4b8a89ccf77ccf181, type: 3}
+  m_Name: kill_enemy_quest_Task
+  m_EditorClassIdentifier: 
+  category: {fileID: 11400000, guid: 86442c5f8b044534f9016e12af7b903c, type: 2}
+  codeName: kill_enemy_quest
+  description: "\uC801 \uCC98\uCE58"
+  action: {fileID: 11400000, guid: 1e8e0279fd05ea54ab37ec1cf8d6d1d6, type: 2}
+  targets:
+  - {fileID: 11400000, guid: bba348763e8b8eb4d9b3ad1a07c8af69, type: 2}
+  initialSuccessValue: {fileID: 0}
+  needSuccessToComplete: 3
+  canReceiveReportsDuringCompletion: 0

@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eba57bb0d557b97489f1f6a374a916b8, type: 3}
+  m_Script: {fileID: 11500000, guid: 398b008592d885c4cbf3b3d72f041cf9, type: 3}
   m_Name: KillEnemy_Target
   m_EditorClassIdentifier: 
-  value: {fileID: 8941960034918127183, guid: 67dda666b60a9264b855f532e5bf9f7d, type: 3}
+  value: Grunt

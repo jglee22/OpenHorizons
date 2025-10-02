@@ -153,6 +153,11 @@ MonoBehaviour:
     m_SerializedLabels:
     - footstep_grass_jump
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0f771640839aae149b599917a0f595ab
+    m_Address: Assets/Scripts/QuestSystems/ScriptableObject/Category/Exploration.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 0fb11b2e4f3de6746ba2c3f528d9b01a
     m_Address: Assets/Footsteps - Essentials/Footsteps_Water/Footsteps_Water_Walk/Footsteps_WaterV2_Walk_02.wav
     m_ReadOnly: 0
@@ -314,6 +319,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels:
     - footstep_grass_run
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d86fecddf492204496f9bc5b70642f4
+    m_Address: Assets/Scripts/QuestSystems/ScriptableObject/Category/Collection.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1deb201b8bf8f89479323a74e421150b
     m_Address: Assets/Footsteps - Essentials/Footsteps_DirtyGround/Footsteps_DirtyGround_Run/Footsteps_DirtyGround_Run_02.wav
@@ -1670,6 +1680,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels:
     - footstep_grass_jump
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 86442c5f8b044534f9016e12af7b903c
+    m_Address: Assets/Scripts/QuestSystems/ScriptableObject/Category/Combat.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 866abdf3a931850498786581089be202
     m_Address: Assets/Footsteps - Essentials/Footsteps_Rock/Footsteps_Rock_Jump/Footsteps_Rock_Jump_Start_06.wav

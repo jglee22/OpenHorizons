@@ -76,10 +76,26 @@ public class QuestSystem : MonoBehaviour
     private void OnApplicationQuit()
     {
         isApplicationQuitting = true;
+        // 종료 시 퀘스트 진행 저장 (로컬 PlayerPrefs)
+        try
+        {
+            Save();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[QuestSystem] 종료 저장 실패: {e.Message}");
+        }
     }
 
     public Quest Register(Quest quest)
     {
+        // 중복 등록 체크
+        if (IsQuestAlreadyRegistered(quest.CodeName))
+        {
+            Debug.LogWarning($"[QuestSystem] 퀘스트가 이미 등록되어 있습니다: {quest.DisplayName} ({quest.CodeName})");
+            return GetRegisteredQuest(quest.CodeName);
+        }
+
         var newQuest = quest.Clone();
 
         if (newQuest is Achievement)
@@ -105,8 +121,78 @@ public class QuestSystem : MonoBehaviour
         return newQuest;
     }
 
+    /// <summary>
+    /// 테스트용: 모든 퀘스트 상태를 초기화 (Active/Completed/업적 포함)하고 로컬 저장 데이터도 삭제
+    /// </summary>
+    public void ResetAllForTesting()
+    {
+        // 활성 퀘스트 취소 및 리스트 비우기
+        var activeCopy = new List<Quest>(activeQuests);
+        foreach (var q in activeCopy)
+        {
+            if (q != null)
+                q.Cancel();
+        }
+        activeQuests.Clear();
+
+        // 완료/업적 리스트 비우기
+        completedQuests.Clear();
+        activeAchievements.Clear();
+        completedAchievements.Clear();
+
+        // 로컬 저장 삭제
+        if (PlayerPrefs.HasKey(kSaveRootPath))
+            PlayerPrefs.DeleteKey(kSaveRootPath);
+
+        Debug.Log("[QuestSystem] ResetAllForTesting: 모든 퀘스트 상태 초기화 완료");
+    }
+    
+    /// <summary>
+    /// 퀘스트가 이미 등록되어 있는지 확인
+    /// </summary>
+    private bool IsQuestAlreadyRegistered(string questCodeName)
+    {
+        bool isActive = activeQuests.Any(q => q.CodeName == questCodeName);
+        bool isCompleted = completedQuests.Any(q => q.CodeName == questCodeName);
+        bool isActiveAchievement = activeAchievements.Any(q => q.CodeName == questCodeName);
+        bool isCompletedAchievement = completedAchievements.Any(q => q.CodeName == questCodeName);
+        
+        if (isActive || isCompleted || isActiveAchievement || isCompletedAchievement)
+        {
+            Debug.Log($"[QuestSystem] 퀘스트 중복 등록 방지: {questCodeName} (Active: {isActive}, Completed: {isCompleted}, ActiveAchievement: {isActiveAchievement}, CompletedAchievement: {isCompletedAchievement})");
+        }
+        
+        return isActive || isCompleted || isActiveAchievement || isCompletedAchievement;
+    }
+    
+    /// <summary>
+    /// 등록된 퀘스트 가져오기
+    /// </summary>
+    private Quest GetRegisteredQuest(string questCodeName)
+    {
+        var quest = activeQuests.FirstOrDefault(q => q.CodeName == questCodeName);
+        if (quest != null) return quest;
+        
+        quest = completedQuests.FirstOrDefault(q => q.CodeName == questCodeName);
+        if (quest != null) return quest;
+        
+        quest = activeAchievements.FirstOrDefault(q => q.CodeName == questCodeName);
+        if (quest != null) return quest;
+        
+        quest = completedAchievements.FirstOrDefault(q => q.CodeName == questCodeName);
+        return quest;
+    }
+
     public void ReceiveReport(string category, object target, int successCount)
     {
+        Debug.Log($"[QuestSystem] 리포팅 시작 - 카테고리: {category}, 타겟: {target} ({target?.GetType()}), 성공수: {successCount}");
+        Debug.Log($"[QuestSystem] 활성 퀘스트 수: {activeQuests.Count}");
+        
+        if (activeQuests.Count == 0)
+        {
+            Debug.LogWarning("[QuestSystem] 활성 퀘스트가 없습니다! F1키로 퀘스트를 등록하세요.");
+        }
+        
         ReceiveReport(activeQuests, category, target, successCount);
         Debug.Log("퀘스트 리포팅: " + category + " " + target + " " + successCount);    
         ReceiveReport(activeAchievements, category, target, successCount);
@@ -114,6 +200,110 @@ public class QuestSystem : MonoBehaviour
 
     public void ReceiveReport(Category category, TaskTarget target, int successCount)
         => ReceiveReport(category.CodeName, target.Value, successCount);
+    
+    // 새로운 리포팅 메서드들 추가 - 모두 118라인을 통해 호출
+    public void ReportItemCollected(string itemId, int amount = 1)
+    {
+        var collectionCategory = FindCategoryByCodeName("collection");
+        if (collectionCategory != null)
+        {
+            var target = CreateStringTarget(itemId);
+            ReceiveReport(collectionCategory, target, amount);
+        }
+    }
+    
+    public void ReportLocationReached(Vector3 position, string locationName = "")
+    {
+        var explorationCategory = FindCategoryByCodeName("exploration");
+        if (explorationCategory != null)
+        {
+            var positionTarget = CreateLocationTarget(position, locationName);
+            ReceiveReport(explorationCategory, positionTarget, 1);
+            
+            if (!string.IsNullOrEmpty(locationName))
+            {
+                var nameTarget = CreateStringTarget(locationName);
+                ReceiveReport(explorationCategory, nameTarget, 1);
+            }
+        }
+    }
+    
+    public void ReportNPCTalked(string npcId, string npcName = "")
+    {
+        var socialCategory = FindCategoryByCodeName("social");
+        if (socialCategory != null)
+        {
+            var target = CreateStringTarget(npcId);
+            ReceiveReport(socialCategory, target, 1);
+            
+            if (!string.IsNullOrEmpty(npcName))
+            {
+                var nameTarget = CreateStringTarget(npcName);
+                ReceiveReport(socialCategory, nameTarget, 1);
+            }
+        }
+    }
+    
+    public void ReportTimeElapsed(float timeInSeconds)
+    {
+        var survivalCategory = FindCategoryByCodeName("survival");
+        if (survivalCategory != null)
+        {
+            var target = CreateStringTarget("Time");
+            ReceiveReport(survivalCategory, target, Mathf.RoundToInt(timeInSeconds));
+        }
+    }
+    
+    public void ReportEnemyKilled(string enemyId, int amount = 1)
+    {
+        var combatCategory = FindCategoryByCodeName("combat");
+        if (combatCategory != null)
+        {
+            var target = CreateStringTarget(enemyId);
+            ReceiveReport(combatCategory, target, amount);
+        }
+    }
+    
+    // 헬퍼 메서드들
+    private Category FindCategoryByCodeName(string codeName)
+    {
+        // QuestDatabase에서 카테고리 찾기
+        var db = Resources.Load<QuestDatabase>("QuestDatabase");
+        if (db?.Quests != null)
+        {
+            foreach (var quest in db.Quests)
+            {
+                if (quest.CurrentTaskGroup != null)
+                {
+                    foreach (var task in quest.CurrentTaskGroup.Tasks)
+                    {
+                        if (task.Category != null && 
+                            string.Equals(task.Category.CodeName, codeName, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            return task.Category;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    
+    private StringTarget CreateStringTarget(string value)
+    {
+        var target = ScriptableObject.CreateInstance<StringTarget>();
+        target.value = value;
+        return target;
+    }
+    
+    private LocationTarget CreateLocationTarget(Vector3 position, string locationName = "")
+    {
+        var target = ScriptableObject.CreateInstance<LocationTarget>();
+        target.targetPosition = position;
+        target.locationName = locationName;
+        target.reachDistance = 5f;
+        return target;
+    }
 
     private void ReceiveReport(List<Quest> quests, string category, object target, int successCount)
     {
@@ -130,11 +320,74 @@ public class QuestSystem : MonoBehaviour
         }
     }
 
+    public void Cancel(Quest quest)
+    {
+        if (quest != null && activeQuests.Contains(quest))
+        {
+            quest.Cancel();
+        }
+    }
+
     public bool ContainsInActiveQuests(Quest quest) => activeQuests.Any(x => x.CodeName == quest.CodeName);
 
     public bool ContainsInCompleteQuests(Quest quest) => completedQuests.Any(x => x.CodeName == quest.CodeName);
 
     public bool ContainsInActiveAchievements(Quest quest) => activeAchievements.Any(x => x.CodeName == quest.CodeName);
+    
+    // 디버그용 메서드
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void DebugActiveQuests()
+    {
+        Debug.Log("=== 활성 퀘스트 디버그 ===");
+        Debug.Log($"활성 퀘스트 수: {activeQuests.Count}");
+        
+        foreach (var quest in activeQuests)
+        {
+            Debug.Log($"퀘스트: {quest.DisplayName} ({quest.CodeName})");
+            Debug.Log($"  상태: {quest.State}");
+            
+            if (quest.CurrentTaskGroup != null)
+            {
+                foreach (var task in quest.CurrentTaskGroup.Tasks)
+                {
+                    Debug.Log($"    태스크: {task.Description}");
+                    Debug.Log($"      카테고리: {task.Category?.CodeName} ({task.Category?.DisplayName})");
+                    Debug.Log($"      진행도: {task.CurrentSuccess}/{task.NeedSuccessToComplete}");
+                    Debug.Log($"      상태: {task.State}");
+                    
+                    // 타겟 정보
+                    if (task.Action != null)
+                    {
+                        Debug.Log($"      액션: {task.Action.GetType().Name}");
+                    }
+                }
+            }
+        }
+        Debug.Log("=== 디버그 끝 ===");
+    }
+    
+    // 직접 테스트용 메서드
+    public void TestEnemyKillReport()
+    {
+        Debug.Log("=== 적 처치 리포팅 테스트 ===");
+        
+        // 1. 카테고리 찾기 테스트
+        var combatCategory = FindCategoryByCodeName("combat");
+        Debug.Log($"Combat 카테고리 찾기: {(combatCategory != null ? combatCategory.CodeName : "null")}");
+        
+        // 2. 타겟 생성 테스트
+        var target = CreateStringTarget("Grunt");
+        Debug.Log($"StringTarget 생성: {target.value}");
+        
+        // 3. 직접 리포팅 테스트
+        if (combatCategory != null)
+        {
+            Debug.Log("직접 리포팅 시도...");
+            ReceiveReport(combatCategory, target, 1);
+        }
+        
+        Debug.Log("=== 테스트 끝 ===");
+    }
 
     public bool ContainsInCompletedAchievements(Quest quest) => completedAchievements.Any(x => x.CodeName == quest.CodeName);
 

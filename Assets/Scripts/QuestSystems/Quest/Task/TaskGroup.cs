@@ -14,13 +14,18 @@ public enum TaskGroupState
 public class TaskGroup
 {
     [SerializeField]
-    private Task[] tasks;
+    public Task[] tasks;
 
     public IReadOnlyList<Task> Tasks => tasks;
     public Quest Owner { get; private set; }
     public bool IsAllTaskComplete => tasks.All(x => x.IsComplete);
     public bool IsComplete => State == TaskGroupState.Complete;
     public TaskGroupState State { get; private set; }
+
+    public TaskGroup()
+    {
+        tasks = new Task[0];
+    }
 
     public TaskGroup(TaskGroup copyTarget)
     {
@@ -49,10 +54,17 @@ public class TaskGroup
 
     public void ReceiveReport(string category, object target, int successCount)
     {
-        foreach (var task in  tasks)
+        Debug.Log($"[TaskGroup] 리포팅 받음 - 카테고리: {category}, 타겟: {target}, 성공수: {successCount}");
+        Debug.Log($"[TaskGroup] 태스크 수: {tasks.Length}");
+        
+        foreach (var task in tasks)
         {
+            Debug.Log($"[TaskGroup] 태스크 체크 - 카테고리: {task.Category?.CodeName}, 타겟 매치: {task.IsTarget(category, target)}");
             if (task.IsTarget(category, target))
+            {
+                Debug.Log($"[TaskGroup] 태스크 매치됨! 진행도 업데이트: {task.CurrentSuccess} -> {task.CurrentSuccess + successCount}");
                 task.ReceiveReport(successCount);
+            }
         }
     }
 

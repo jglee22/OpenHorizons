@@ -6,7 +6,7 @@ using UnityEngine;
 public class StringTarget : TaskTarget
 {
     [SerializeField]
-    private string value;
+    public string value;
 
     public override object Value => value;
 

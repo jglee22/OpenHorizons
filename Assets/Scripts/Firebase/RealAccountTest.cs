@@ -178,47 +178,4 @@ public class RealAccountTest : MonoBehaviour
             return e.Message;
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUIStyle warningStyle = new GUIStyle(GUI.skin.label);
-        warningStyle.fontSize = 12;
-        warningStyle.normal.textColor = Color.red;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 400, 300));
-        GUILayout.Label("=== 실제 계정 테스트 ===", headerStyle);
-        GUILayout.Space(5);
-        
-        if (string.IsNullOrEmpty(realEmail) || realEmail == "your-email@gmail.com")
-        {
-            GUILayout.Label("⚠️ Inspector에서 실제 계정 정보를 설정해주세요!", warningStyle);
-        }
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 테스트 키 ===", headerStyle);
-        GUILayout.Label("F10: 실제 계정 로그인 테스트", labelStyle);
-        GUILayout.Label("F11: 잘못된 비밀번호 테스트", labelStyle);
-        GUILayout.Label("F12: 잘못된 이메일 테스트", labelStyle);
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 현재 설정 ===", headerStyle);
-        GUILayout.Label($"이메일: {realEmail}", labelStyle);
-        GUILayout.Label($"비밀번호: {(!string.IsNullOrEmpty(realPassword) ? "설정됨" : "설정 안됨")}", labelStyle);
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 사용법 ===", headerStyle);
-        GUILayout.Label("1. Inspector에서 realEmail과 realPassword 설정", labelStyle);
-        GUILayout.Label("2. F10으로 실제 계정 로그인 테스트", labelStyle);
-        GUILayout.Label("3. F11, F12로 오류 상황 테스트", labelStyle);
-        
-        GUILayout.EndArea();
-    }
 }

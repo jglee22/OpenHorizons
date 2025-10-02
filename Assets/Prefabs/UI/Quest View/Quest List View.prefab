@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 5159684177203391147}
   - component: {fileID: 3635817348559527034}
   - component: {fileID: 4407538169647470843}
+  - component: {fileID: 7223959459626807001}
   m_Layer: 5
   m_Name: Quest List View
   m_TagString: Untagged
@@ -33,7 +34,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -117,3 +117,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_AllowSwitchOff: 0
+--- !u!114 &7223959459626807001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4531808705463015222}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 111d47670c50a864eaeacd136712bc99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  elementTextPrefab: {fileID: 1642049669410721678, guid: f922edc4d0bac4d488c7b0b2bf5daee8, type: 3}

@@ -61,6 +61,7 @@ public class Quest : ScriptableObject
     private Condition[] cancelConditions;
 
     private int currentTaskGroupIndex;
+    private bool rewardClaimed;
 
     public Category Category => category;
     public Sprite Icon => icon;
@@ -137,13 +138,28 @@ public class Quest : ScriptableObject
     {
         CheckIsRunning();
 
+        // 이미 완료된 퀘스트인지 확인
+        if (State == QuestState.Complete)
+        {
+            Debug.LogWarning($"[Quest] 퀘스트가 이미 완료되어 있습니다: {DisplayName}");
+            return;
+        }
+
         foreach (var taskGroup in taskGroups)
             taskGroup.Complete();
 
         State = QuestState.Complete;
 
-        foreach (var reward in rewards)
-            reward.Give(this);
+        // 보상 지급 (중복 방지: 이미 수령된 경우 스킵)
+        if (!rewardClaimed)
+        {
+            foreach (var reward in rewards)
+            {
+                Debug.Log($"[Quest] 퀘스트 보상 지급: {DisplayName} - {reward.Description}");
+                reward.Give(this);
+            }
+            rewardClaimed = true;
+        }
 
         onCompleted?.Invoke(this);
 
@@ -174,6 +190,12 @@ public class Quest : ScriptableObject
         return clone;
     }
 
+    // Firebase 복원 등 외부에서 보상 수령 상태를 동기화할 때 사용
+    public void MarkRewardClaimed(bool claimed)
+    {
+        rewardClaimed = claimed;
+    }
+
     public QuestSaveData ToSaveData()
     {
         return new QuestSaveData
@@ -181,7 +203,8 @@ public class Quest : ScriptableObject
             codeName = codeName,
             state = State,
             taskGroupIndex = currentTaskGroupIndex,
-            taskSuccessCounts = CurrentTaskGroup.Tasks.Select(x => x.CurrentSuccess).ToArray()
+            taskSuccessCounts = CurrentTaskGroup.Tasks.Select(x => x.CurrentSuccess).ToArray(),
+            rewardClaimed = rewardClaimed
         };
     }
 
@@ -189,6 +212,7 @@ public class Quest : ScriptableObject
     {
         State = saveData.state;
         currentTaskGroupIndex = saveData.taskGroupIndex;
+        rewardClaimed = saveData.rewardClaimed;
 
         for (int i = 0; i < currentTaskGroupIndex; i++)
         {

@@ -31,15 +31,89 @@ public class FirebaseInventoryManager : MonoBehaviour
     
     private void Start()
     {
-        InitializeFirebase();
+        StartCoroutine(InitializeFirebaseWhenReady());
+    }
+    
+    private System.Collections.IEnumerator InitializeFirebaseWhenReady()
+    {
+        // Firebase 초기화 대기
+        float maxWaitTime = 15f;
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < maxWaitTime)
+        {
+            // Firebase 초기화 상태 확인
+            bool firebaseAppReady = FirebaseApp.DefaultInstance != null;
+            bool firebaseDatabaseReady = FirebaseDatabase.DefaultInstance != null;
+            bool firebaseAuthReady = FirebaseAuth.DefaultInstance != null;
+            
+            if (enableDebugLogs)
+                Debug.Log($"[FirebaseInventory] Firebase 상태 체크 - App: {firebaseAppReady}, Database: {firebaseDatabaseReady}, Auth: {firebaseAuthReady}");
+            
+            if (firebaseAppReady && firebaseDatabaseReady && firebaseAuthReady)
+            {
+                if (enableDebugLogs)
+                    Debug.Log("[FirebaseInventory] Firebase 초기화 완료, 초기화 시작");
+                
+                InitializeFirebase();
+                
+                // 초기화 후 DatabaseReference 확인
+                if (databaseReference != null)
+                {
+                    if (enableDebugLogs)
+                        Debug.Log("[FirebaseInventory] DatabaseReference 초기화 성공!");
+                    yield break;
+                }
+                else
+                {
+                    if (enableDebugLogs)
+                        Debug.LogError("[FirebaseInventory] DatabaseReference 초기화 실패!");
+                }
+            }
+            
+            yield return new WaitForSeconds(1f);
+            elapsedTime += 1f;
+        }
+        
+        if (enableDebugLogs)
+            Debug.LogError("[FirebaseInventory] Firebase 초기화 시간 초과!");
     }
     
     private void InitializeFirebase()
     {
         try
         {
+            // Firebase 초기화 상태 확인
+            if (FirebaseApp.DefaultInstance == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[FirebaseInventory] Firebase가 초기화되지 않았습니다!");
+                return;
+            }
+            
+            if (FirebaseDatabase.DefaultInstance == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[FirebaseInventory] FirebaseDatabase가 초기화되지 않았습니다!");
+                return;
+            }
+            
             databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
             auth = FirebaseAuth.DefaultInstance;
+            
+            if (databaseReference == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[FirebaseInventory] DatabaseReference가 null입니다!");
+                return;
+            }
+            
+            if (auth == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[FirebaseInventory] FirebaseAuth가 null입니다!");
+                return;
+            }
             
             // ItemDatabase 자동 찾기
             if (itemDatabase == null)
@@ -117,6 +191,37 @@ public class FirebaseInventoryManager : MonoBehaviour
     /// </summary>
     public async Task<List<InventorySlot>> LoadInventory()
     {
+        // Firebase 초기화 상태 확인
+        if (databaseReference == null)
+        {
+            if (enableDebugLogs)
+                Debug.LogWarning("[FirebaseInventory] DatabaseReference가 null입니다. 재초기화 시도...");
+            
+            // 재초기화 시도
+            InitializeFirebase();
+            
+            if (databaseReference == null)
+            {
+                if (enableDebugLogs)
+                    Debug.LogError("[FirebaseInventory] DatabaseReference 재초기화 실패!");
+                OnError?.Invoke("DatabaseReference가 초기화되지 않았습니다.");
+                return new List<InventorySlot>();
+            }
+            else
+            {
+                if (enableDebugLogs)
+                    Debug.Log("[FirebaseInventory] DatabaseReference 재초기화 성공!");
+            }
+        }
+        
+        if (auth == null)
+        {
+            if (enableDebugLogs)
+                Debug.LogError("[FirebaseInventory] FirebaseAuth가 null입니다!");
+            OnError?.Invoke("FirebaseAuth가 초기화되지 않았습니다.");
+            return new List<InventorySlot>();
+        }
+        
         if (auth.CurrentUser == null)
         {
             if (enableDebugLogs)
@@ -129,6 +234,9 @@ public class FirebaseInventoryManager : MonoBehaviour
         {
             string userId = auth.CurrentUser.UserId;
             string path = $"{inventoryPath}/{userId}";
+            
+            if (enableDebugLogs)
+                Debug.Log($"[FirebaseInventory] 인벤토리 로드 시작: {path}");
             
             // Firebase에서 데이터 불러오기
             var snapshot = await databaseReference.Child(path).GetValueAsync();
@@ -257,8 +365,86 @@ public class FirebaseInventoryManager : MonoBehaviour
                         staminaRestore = firebaseSlot.item.staminaRestore
                     };
                     
-                    // 아이템 아이콘 재생성
-                    slot.item.icon = CreateItemIcon(slot.item.itemType, slot.item.itemName);
+                    // 아이템 아이콘 재생성 - 허브 아이템 특별 처리
+                    if (slot.item.itemName.Contains("허브") || slot.item.itemName.Contains("herb") || slot.item.itemName.ToLower().Contains("healing"))
+                    {
+                        // 허브 아이템 아이콘 로드 (강화된 방법)
+                        string[] herbPaths = {
+                            "Healing_Herb",
+                            "Healing_Herb.png",
+                            "healing_herb", 
+                            "Healing Herb",
+                            "healing herb",
+                            "치유 허브",
+                            "허브"
+                        };
+                        
+                        Sprite herbIcon = null;
+                        
+                        // 먼저 일반적인 경로들로 시도
+                        foreach (string path in herbPaths)
+                        {
+                            if (enableDebugLogs)
+                                Debug.Log($"[FirebaseInventory] 허브 아이콘 로드 시도: {path}");
+                            herbIcon = Resources.Load<Sprite>(path);
+                            if (herbIcon != null)
+                            {
+                                if (enableDebugLogs)
+                                    Debug.Log($"[FirebaseInventory] 허브 아이콘 로드 성공: {path}");
+                                break;
+                            }
+                        }
+                        
+                        // 모든 경로 실패 시 Resources 폴더에서 모든 스프라이트 검색
+                        if (herbIcon == null)
+                        {
+                            if (enableDebugLogs)
+                                Debug.Log("[FirebaseInventory] Resources 폴더에서 모든 스프라이트 검색 중...");
+                            Sprite[] allSprites = Resources.LoadAll<Sprite>("");
+                            if (enableDebugLogs)
+                                Debug.Log($"[FirebaseInventory] Resources 폴더에서 발견된 스프라이트 수: {allSprites.Length}");
+                            
+                            // 모든 스프라이트 이름 출력
+                            if (enableDebugLogs)
+                            {
+                                foreach (Sprite sprite in allSprites)
+                                {
+                                    Debug.Log($"[FirebaseInventory] 발견된 스프라이트: {sprite.name}");
+                                }
+                            }
+                            
+                            foreach (Sprite sprite in allSprites)
+                            {
+                                if (sprite.name.ToLower().Contains("herb") || 
+                                    sprite.name.ToLower().Contains("healing") ||
+                                    sprite.name.Contains("허브"))
+                                {
+                                    herbIcon = sprite;
+                                    if (enableDebugLogs)
+                                        Debug.Log($"[FirebaseInventory] 허브 아이콘 발견: {sprite.name}");
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (herbIcon != null)
+                        {
+                            slot.item.icon = herbIcon;
+                            if (enableDebugLogs)
+                                Debug.Log($"[FirebaseInventory] 허브 아이콘 설정 완료: {herbIcon.name}");
+                        }
+                        else
+                        {
+                            if (enableDebugLogs)
+                                Debug.LogWarning("[FirebaseInventory] 모든 방법으로 허브 아이콘을 찾을 수 없습니다. 동적 생성합니다.");
+                            slot.item.icon = CreateDynamicHerbIcon();
+                        }
+                    }
+                    else
+                    {
+                        // 다른 아이템들은 기존 방식 사용
+                        slot.item.icon = CreateItemIcon(slot.item.itemType, slot.item.itemName);
+                    }
                     
                     if (enableDebugLogs)
                         Debug.LogWarning($"[FirebaseInventory] ScriptableObject에서 아이템을 찾을 수 없어 기존 방식 사용: {firebaseSlot.item.itemName}");
@@ -335,7 +521,12 @@ public class FirebaseInventoryManager : MonoBehaviour
             "Bronze_Sword",
             "bronze_sword",
             "Bronze Sword",
-            "bronze sword"
+            "bronze sword",
+            // 허브 아이템 특별 처리
+            "Healing_Herb",
+            "healing_herb",
+            "치유 허브",
+            "허브"
         };
         
         foreach (string path in possiblePaths)
@@ -412,6 +603,64 @@ public class FirebaseInventoryManager : MonoBehaviour
     }
     
     /// <summary>
+    /// 동적 허브 아이콘 생성
+    /// </summary>
+    private Sprite CreateDynamicHerbIcon()
+    {
+        int iconSize = 64;
+        Texture2D texture = new Texture2D(iconSize, iconSize);
+        
+        // 허브 색상 (녹색 계열)
+        Color herbColor = new Color(0.2f, 0.8f, 0.3f, 1f); // 밝은 녹색
+        Color stemColor = new Color(0.4f, 0.6f, 0.2f, 1f); // 어두운 녹색
+        
+        // 배경색으로 채우기
+        Color[] pixels = new Color[iconSize * iconSize];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = herbColor;
+        }
+        
+        // 허브 모양 그리기 (중앙에 원형)
+        Vector2 center = new Vector2(iconSize / 2f, iconSize / 2f);
+        float radius = iconSize / 3f;
+        
+        for (int x = 0; x < iconSize; x++)
+        {
+            for (int y = 0; y < iconSize; y++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                if (distance < radius)
+                {
+                    int index = y * iconSize + x;
+                    // 허브 잎 부분
+                    if (y > center.y)
+                    {
+                        pixels[index] = herbColor;
+                    }
+                    // 줄기 부분
+                    else
+                    {
+                        pixels[index] = stemColor;
+                    }
+                }
+            }
+        }
+        
+        texture.SetPixels(pixels);
+        texture.Apply();
+        
+        // Texture2D를 Sprite로 변환
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, iconSize, iconSize), new Vector2(0.5f, 0.5f));
+        sprite.name = "DynamicHerbIcon";
+        
+        if (enableDebugLogs)
+            Debug.Log("[FirebaseInventory] 동적 허브 아이콘 생성 완료");
+        
+        return sprite;
+    }
+    
+    /// <summary>
     /// 아이템 타입에 따른 색상 반환
     /// </summary>
     private Color GetItemTypeColor(ItemType itemType)
@@ -419,7 +668,7 @@ public class FirebaseInventoryManager : MonoBehaviour
         switch (itemType)
         {
             case ItemType.Food:
-                return new Color(0.8f, 0.4f, 0.2f); // 갈색
+                return new Color(0.2f, 0.8f, 0.2f); // 초록색 (허브 아이템용)
             case ItemType.Material:
                 return new Color(0.6f, 0.6f, 0.6f); // 회색
             case ItemType.Tool:

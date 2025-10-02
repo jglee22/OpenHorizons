@@ -272,20 +272,5 @@ namespace AudioSystem
             }
         }
         
-        // private void OnGUI()
-        // {
-        //     if (!showDebugInfo) return;
-            
-        //     GUILayout.BeginArea(new Rect(10, 10, 300, 200));
-        //     GUILayout.Label("=== 어드레서블 테스트 ===");
-        //     GUILayout.Label($"L키: 사운드 로드 테스트");
-        //     GUILayout.Label($"P키: 사운드 재생 테스트");
-        //     GUILayout.Label($"R키: 메모리 해제 테스트");
-        //     GUILayout.Label("");
-        //     GUILayout.Label($"현재 상태: {(isLoaded ? "로드됨" : "로드 안됨")}");
-        //     GUILayout.Label($"로드된 사운드: {loadedClips.Count}개");
-        //     GUILayout.Label($"테스트 레이블: {testLabel}");
-        //     GUILayout.EndArea();
-        // }
     }
 }

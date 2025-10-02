@@ -50,23 +50,23 @@ public class IntegratedTestManager : MonoBehaviour
     
     void HandleTestInput()
     {
-        // === 전투 시스템 테스트 ===
-        if (Input.GetKeyDown(KeyCode.E))
+        // === 전투 시스템 테스트 (F키 그룹) ===
+        if (Input.GetKeyDown(KeyCode.F7))
         {
             SpawnEnemy();
         }
         
-        if (Input.GetKeyDown(KeyCode.Q))
+        if (Input.GetKeyDown(KeyCode.F8))
         {
             SpawnWeapon();
         }
         
-        if (Input.GetKeyDown(KeyCode.R))
+        if (Input.GetKeyDown(KeyCode.F9))
         {
             EquipWeapon();
         }
         
-        if (Input.GetKeyDown(KeyCode.T))
+        if (Input.GetKeyDown(KeyCode.F10))
         {
             UnequipWeapon();
         }
@@ -163,6 +163,7 @@ public class IntegratedTestManager : MonoBehaviour
     Item CreateWeaponItem()
     {
         Item weaponItem = new Item();
+        weaponItem.itemId = "bronze_sword";
         weaponItem.itemName = "Bronze Sword";
         weaponItem.description = "청동으로 만든 견고한 검입니다. 데미지: 25, 범위: 2";
         weaponItem.itemType = ItemType.Weapon;
@@ -428,60 +429,4 @@ public class IntegratedTestManager : MonoBehaviour
         questStatusText.text = status;
     }
     
-    // void OnGUI()
-    // {
-    //     GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-    //     labelStyle.fontSize = 14;
-    //     labelStyle.normal.textColor = Color.white;
-        
-    //     GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-    //     headerStyle.fontSize = 16;
-    //     headerStyle.fontStyle = FontStyle.Bold;
-    //     headerStyle.normal.textColor = Color.yellow;
-        
-    //     GUILayout.BeginArea(new Rect(10, 10, 400, 400));
-        
-    //     // === 전투 시스템 ===
-    //     GUILayout.Label("=== 전투 시스템 테스트 ===", headerStyle);
-    //     GUILayout.Space(5);
-    //     GUILayout.Label("E키: 적 생성", labelStyle);
-    //     GUILayout.Label("Q키: 무기 획득", labelStyle);
-    //     GUILayout.Label("R키: 무기 장착", labelStyle);
-    //     GUILayout.Label("T키: 무기 해제", labelStyle);
-    //     GUILayout.Label("H키: 플레이어 체력 회복", labelStyle);
-        
-    //     GUILayout.Space(10);
-        
-    //     // === 퀘스트 시스템 ===
-    //     GUILayout.Label("=== 퀘스트 시스템 테스트 ===", headerStyle);
-    //     GUILayout.Space(5);
-    //     GUILayout.Label("F1: 퀘스트 등록", labelStyle);
-    //     GUILayout.Label("F2: 퀘스트 완료", labelStyle);
-    //     GUILayout.Label("F3: 테스트 적 생성", labelStyle);
-    //     GUILayout.Label("F4: 테스트 아이템 생성", labelStyle);
-    //     GUILayout.Label("Tab: 상태 새로고침", labelStyle);
-        
-    //     GUILayout.Space(10);
-        
-    //     // === 기존 게임 기능 ===
-    //     GUILayout.Label("=== 기존 게임 기능 ===", headerStyle);
-    //     GUILayout.Space(5);
-    //     GUILayout.Label("마우스 좌클릭: 공격", labelStyle);
-    //     GUILayout.Label("WASD: 이동", labelStyle);
-    //     GUILayout.Label("Space: 점프", labelStyle);
-    //     GUILayout.Label("I: 인벤토리 열기", labelStyle);
-        
-    //     GUILayout.Space(10);
-        
-    //     // === 플레이어 상태 ===
-    //     if (playerCombat != null)
-    //     {
-    //         GUILayout.Label("=== 플레이어 상태 ===", headerStyle);
-    //         GUILayout.Space(5);
-    //         GUILayout.Label($"체력: {playerCombat.currentHealth:F0}/{playerCombat.maxHealth:F0}", labelStyle);
-    //         GUILayout.Label($"무기: {playerCombat.GetWeaponInfo()}", labelStyle);
-    //     }
-        
-    //     GUILayout.EndArea();
-    // }
 }

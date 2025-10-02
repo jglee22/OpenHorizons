@@ -14,6 +14,9 @@ public class QuestDatabase : ScriptableObject
     private List<Quest> quests;
 
     public IReadOnlyList<Quest> Quests => quests;
+    
+    // 에디터에서 사용할 수 있는 수정 가능한 프로퍼티
+    public List<Quest> EditableQuests => quests;
 
     public Quest FindQuestBy(string codeName) => quests.FirstOrDefault(x => x.CodeName == codeName);
 

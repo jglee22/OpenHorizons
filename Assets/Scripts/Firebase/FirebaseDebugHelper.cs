@@ -269,39 +269,4 @@ public class FirebaseDebugHelper : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 400, 200));
-        GUILayout.Label("=== Firebase 디버그 헬퍼 ===", headerStyle);
-        GUILayout.Space(5);
-        GUILayout.Label("F9: 전체 디버그 테스트", labelStyle);
-        GUILayout.Label("F10: 서비스 테스트", labelStyle);
-        GUILayout.Space(10);
-        
-        if (GUILayout.Button("전체 디버그 테스트"))
-        {
-            RunFullDebugTest();
-        }
-        
-        if (GUILayout.Button("서비스 테스트"))
-        {
-            TestFirebaseServices();
-        }
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 설정 ===", headerStyle);
-        enableDebugLogs = GUILayout.Toggle(enableDebugLogs, "디버그 로그 활성화");
-        enableDetailedLogs = GUILayout.Toggle(enableDetailedLogs, "상세 로그 활성화");
-        
-        GUILayout.EndArea();
-    }
 }
