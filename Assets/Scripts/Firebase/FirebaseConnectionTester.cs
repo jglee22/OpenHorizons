@@ -247,34 +247,4 @@ public class FirebaseConnectionTester : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 400, 200));
-        GUILayout.Label("=== Firebase 연결 테스트 ===", headerStyle);
-        GUILayout.Space(5);
-        GUILayout.Label("F9: 전체 연결 테스트", labelStyle);
-        GUILayout.Label("F10: 데이터베이스 연결 테스트", labelStyle);
-        GUILayout.Space(10);
-        
-        if (GUILayout.Button("전체 연결 테스트"))
-        {
-            RunConnectionTest();
-        }
-        
-        if (GUILayout.Button("데이터베이스 연결 테스트"))
-        {
-            TestDatabaseConnection();
-        }
-        
-        GUILayout.EndArea();
-    }
 }

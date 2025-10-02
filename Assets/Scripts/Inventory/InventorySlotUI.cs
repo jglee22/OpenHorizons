@@ -168,6 +168,12 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerEnte
             {
                 itemIcon.sprite = slot.item.icon;
                 itemIcon.color = slot.item.icon != null ? Color.white : new Color(1, 1, 1, 0.5f);
+                
+                // 허브 아이템 디버그 로그
+                if (slot.item.itemName.Contains("허브") || slot.item.itemName.Contains("herb") || slot.item.itemName.ToLower().Contains("healing"))
+                {
+                    Debug.Log($"[InventorySlotUI] 허브 아이템 아이콘 설정: {slot.item.itemName}, 아이콘: {(slot.item.icon != null ? slot.item.icon.name : "null")}");
+                }
             }
             
             if (quantityText != null)

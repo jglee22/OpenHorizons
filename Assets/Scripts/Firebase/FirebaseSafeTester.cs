@@ -202,29 +202,4 @@ public class FirebaseSafeTester : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 300, 150));
-        GUILayout.Label("=== Firebase 안전 테스트 ===", headerStyle);
-        GUILayout.Space(5);
-        GUILayout.Label("F9: 안전 연결 테스트", labelStyle);
-        GUILayout.Label("테스트 상태: " + (isTestRunning ? "실행 중..." : "대기 중"), labelStyle);
-        GUILayout.Space(10);
-        
-        if (GUILayout.Button("안전 테스트 실행"))
-        {
-            SafeConnectionTest();
-        }
-        
-        GUILayout.EndArea();
-    }
 }

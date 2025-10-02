@@ -44,6 +44,18 @@ public class QuestDetailView : MonoBehaviour
         rewardDescriptionPool = CreatePool(rewardDescriptionPrefab, rewardDescriptionPoolCount, rewardDescriptionGroup);
         displayGroup.SetActive(false);
     }
+    
+    /// <summary>
+    /// 필요에 따라 TaskDescriptor 풀을 동적으로 확장
+    /// </summary>
+    private void EnsureTaskDescriptorPoolSize(int requiredSize)
+    {
+        while (taskDescriptorPool.Count < requiredSize)
+        {
+            var newTaskDescriptor = Instantiate(taskDescriptorPrefab, taskDescriptorGroup);
+            taskDescriptorPool.Add(newTaskDescriptor);
+        }
+    }
 
     private void Start()
     {
@@ -73,6 +85,16 @@ public class QuestDetailView : MonoBehaviour
         title.text = quest.DisplayName;
         description.text = quest.Description;
 
+        // 필요한 TaskDescriptor 개수 계산
+        int totalTaskCount = 0;
+        foreach (var taskGroup in quest.TaskGroups)
+        {
+            totalTaskCount += taskGroup.Tasks.Count;
+        }
+        
+        // 풀 크기를 동적으로 확장
+        EnsureTaskDescriptorPoolSize(totalTaskCount);
+
         int taskIndex = 0;
         foreach (var taskGroup in quest.TaskGroups)
         {
@@ -86,7 +108,7 @@ public class QuestDetailView : MonoBehaviour
                 else if (taskGroup == quest.CurrentTaskGroup)
                     poolObject.UpdateText(task);
                 else
-                    poolObject.UpdateText("�� ??????????");
+                    poolObject.UpdateText("�� ??????????");
             }
         }
 
@@ -101,7 +123,7 @@ public class QuestDetailView : MonoBehaviour
             if (i < rewardCount)
             {
                 var reward = rewards[i];
-                poolObject.text = $"�� {reward.Description} +{reward.Quantity}";
+                poolObject.text = $"�� {reward.Description} +{reward.Quantity}";
                 poolObject.gameObject.SetActive(true);
             }
             else

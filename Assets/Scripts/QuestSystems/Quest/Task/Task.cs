@@ -33,7 +33,7 @@ public class Task : ScriptableObject
 
     [Header("Target")]
     [SerializeField]
-    private TaskTarget[] targets;
+    public TaskTarget[] targets;
 
     [Header("Setting")]
     [SerializeField]
@@ -66,6 +66,7 @@ public class Task : ScriptableObject
     public Category Category => category;
     public string CodeName => codeName;
     public string Description => description;
+    public TaskAction Action => action;
     public int NeedSuccessToComplete => needSuccessToComplete;
     public TaskState State
     {
@@ -109,9 +110,24 @@ public class Task : ScriptableObject
     }
 
     public bool IsTarget(string category, object target)
-        => Category == category &&
-        targets.Any(x => x.IsEqual(target)) &&
-        (!IsComplete || (IsComplete && canReceiveReportsDuringCompletion));
+    {
+        bool categoryMatch = Category != null && 
+                           string.Equals(Category.CodeName, category, System.StringComparison.OrdinalIgnoreCase);
+        bool targetMatch = targets.Any(x => x.IsEqual(target));
+        bool canReceive = !IsComplete || (IsComplete && canReceiveReportsDuringCompletion);
+        
+        Debug.Log($"[Task.IsTarget] {CodeName} - 카테고리매치: {categoryMatch} ({Category?.CodeName} == {category}), 타겟매치: {targetMatch}, 수신가능: {canReceive}");
+        
+        if (targetMatch)
+        {
+            foreach (var t in targets)
+            {
+                Debug.Log($"[Task.IsTarget] 타겟 체크: {t.Value} == {target} -> {t.IsEqual(target)}");
+            }
+        }
+        
+        return categoryMatch && targetMatch && canReceive;
+    }
 
     public bool ContainsTarget(object target) => targets.Any(x => x.IsEqual(target));
 }

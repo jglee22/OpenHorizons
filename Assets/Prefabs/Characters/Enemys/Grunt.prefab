@@ -921,6 +921,7 @@ MonoBehaviour:
   currentHealth: 0
   isDead: 0
   deathDelay: 2
+  enemyId: Grunt
 --- !u!114 &7813775649192376635
 MonoBehaviour:
   m_ObjectHideFlags: 0

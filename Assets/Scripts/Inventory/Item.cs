@@ -7,6 +7,7 @@ using UnityEngine;
 public class Item
 {
     [Header("아이템 정보")]
+    public string itemId;          // 아이템 고유 ID
     public string itemName;
     public string description;
     public Sprite icon;
@@ -25,13 +26,15 @@ public class Item
     
     public Item()
     {
+        itemId = "new_item";
         itemName = "새 아이템";
         description = "아이템 설명을 입력하세요.";
         itemType = ItemType.Misc;
     }
     
-    public Item(string name, string desc, ItemType type)
+    public Item(string id, string name, string desc, ItemType type)
     {
+        itemId = id;
         itemName = name;
         description = desc;
         itemType = type;
@@ -43,6 +46,7 @@ public class Item
     public Item Clone()
     {
         Item newItem = new Item();
+        newItem.itemId = this.itemId;
         newItem.itemName = this.itemName;
         newItem.description = this.description;
         newItem.icon = this.icon;

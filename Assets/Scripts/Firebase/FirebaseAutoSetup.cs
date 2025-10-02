@@ -92,34 +92,4 @@ public class FirebaseAutoSetup : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 16;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.normal.textColor = Color.yellow;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 400, 200));
-        GUILayout.Label("=== Firebase 자동 설정 ===", headerStyle);
-        GUILayout.Space(5);
-        GUILayout.Label("Inspector에서 'Firebase 매니저 자동 설정' 버튼을 클릭하세요", labelStyle);
-        GUILayout.Space(10);
-        
-        if (GUILayout.Button("Firebase 매니저 자동 설정"))
-        {
-            SetupFirebaseManagers();
-        }
-        
-        GUILayout.Space(10);
-        GUILayout.Label("=== 생성되는 매니저들 ===", headerStyle);
-        GUILayout.Label("• FirebaseManager", labelStyle);
-        GUILayout.Label("• FirebaseAuthManager", labelStyle);
-        GUILayout.Label("• FirebaseConnectionTester", labelStyle);
-        
-        GUILayout.EndArea();
-    }
 }

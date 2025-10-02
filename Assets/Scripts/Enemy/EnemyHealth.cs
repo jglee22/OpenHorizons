@@ -11,6 +11,9 @@ public class EnemyHealth : MonoBehaviour
     public bool isDead = false;
     public float deathDelay = 2f;
     
+    [Header("퀘스트 설정")]
+    public string enemyId = "Grunt"; // 적 ID (퀘스트 리포팅용)
+    
     [Header("이벤트")]
     public Action<float, float> OnHealthChanged; // (현재체력, 최대체력)
     public Action OnEnemyDeath;
@@ -18,6 +21,12 @@ public class EnemyHealth : MonoBehaviour
     void Start()
     {
         currentHealth = maxHealth;
+        
+        // enemyId가 설정되지 않았으면 게임오브젝트 이름 사용
+        if (string.IsNullOrEmpty(enemyId))
+        {
+            enemyId = gameObject.name;
+        }
     }
     
     // 데미지 받기
@@ -50,6 +59,13 @@ public class EnemyHealth : MonoBehaviour
         OnEnemyDeath?.Invoke();
         
         Debug.Log("적이 사망했습니다!");
+        
+        // 퀘스트 리포팅 (적 처치)
+        if (QuestSystem.Instance != null)
+        {
+            QuestSystem.Instance.ReceiveReport("combat", enemyId, 1);
+            Debug.Log($"[EnemyHealth] 적 처치 리포팅: {enemyId}");
+        }
         
         // 사망 애니메이션 재생 (있다면)
         Animator animator = GetComponent<Animator>();

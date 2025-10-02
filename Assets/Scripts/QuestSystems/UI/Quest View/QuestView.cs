@@ -11,6 +11,9 @@ public class QuestView : MonoBehaviour
 
     private void Start()
     {
+        // 퀘스트 UI를 시작 시 비활성화
+        gameObject.SetActive(false);
+        
         var questSystem = QuestSystem.Instance;
 
         foreach (var quest in questSystem.ActiveQuests)
@@ -28,8 +31,6 @@ public class QuestView : MonoBehaviour
 
         foreach (var tab in questListViewController.Tabs)
             tab.onValueChanged.AddListener(HideDetail);
-
-        gameObject.SetActive(false);
     }
 
     private void OnDestroy()
@@ -54,8 +55,42 @@ public class QuestView : MonoBehaviour
 
     private void Update()
     {
+        // ESC키로 퀘스트 UI 닫기 (활성화된 상태에서만)
         if (Input.GetKeyDown(KeyCode.Escape))
-            gameObject.SetActive(false);
+            CloseQuestUI();
+    }
+    
+    /// <summary>
+    /// 퀘스트 UI 열기
+    /// </summary>
+    public void OpenQuestUI()
+    {
+        gameObject.SetActive(true);
+        Time.timeScale = 0f; // 게임 일시정지
+        Cursor.lockState = CursorLockMode.None; // 마우스 커서 활성화
+        Cursor.visible = true;
+    }
+    
+    /// <summary>
+    /// 퀘스트 UI 닫기
+    /// </summary>
+    public void CloseQuestUI()
+    {
+        gameObject.SetActive(false);
+        Time.timeScale = 1f; // 게임 재개
+        Cursor.lockState = CursorLockMode.Locked; // 마우스 커서 숨김
+        Cursor.visible = false;
+    }
+    
+    /// <summary>
+    /// 퀘스트 UI 토글 (열기/닫기)
+    /// </summary>
+    public void ToggleQuestUI()
+    {
+        if (gameObject.activeInHierarchy)
+            CloseQuestUI();
+        else
+            OpenQuestUI();
     }
 
     private void ShowDetail(bool isOn, Quest quest)

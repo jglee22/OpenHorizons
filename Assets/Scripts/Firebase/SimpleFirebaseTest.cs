@@ -57,15 +57,4 @@ public class SimpleFirebaseTest : MonoBehaviour
         }
     }
     
-    private void OnGUI()
-    {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 14;
-        labelStyle.normal.textColor = Color.white;
-        
-        GUILayout.BeginArea(new Rect(10, 10, 300, 100));
-        GUILayout.Label("=== 간단한 Firebase 테스트 ===", labelStyle);
-        GUILayout.Label("F9: Firebase 연결 테스트", labelStyle);
-        GUILayout.EndArea();
-    }
 }

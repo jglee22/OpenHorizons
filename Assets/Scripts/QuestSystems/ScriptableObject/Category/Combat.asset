@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 368eb5c96ad79ca49a907902e085085b, type: 3}
   m_Name: Combat
   m_EditorClassIdentifier: 
-  codeName: Combat
-  displayName: 
+  codeName: combat
+  displayName: Combat

@@ -4,4 +4,5 @@ public struct QuestSaveData
     public QuestState state;
     public int taskGroupIndex;
     public int[] taskSuccessCounts;
+    public bool rewardClaimed;
 }

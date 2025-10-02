@@ -384,17 +384,7 @@ public class EnemyAI : MonoBehaviour
     {
         currentState = EnemyState.Dead;
         
-        // 퀘스트 리포팅 - 적 처치
-        if (QuestSystem.Instance != null)
-        {
-            Debug.Log($"퀘스트 리포팅 - 적 처치: {gameObject.name}");
-            QuestSystem.Instance.ReceiveReport("Combat", gameObject, 1);
-            Debug.Log($"퀘스트 리포팅 완료 - Combat, {gameObject.name}, 1");
-        }
-        else
-        {
-            Debug.LogWarning("QuestSystem.Instance가 null입니다!");
-        }
+        // 퀘스트 리포팅은 EnemyHealth.Die()에서 처리됨
         
         // 사망 애니메이션
         if (animator != null)

@@ -10,6 +10,7 @@ public class CollectibleItem : InteractableObject
     [SerializeField] private string itemDescription = "수집할 수 있는 아이템입니다.";
     [SerializeField] private Sprite itemIcon;
     [SerializeField] private ItemType itemType = ItemType.Misc;
+    [SerializeField] public string itemId = ""; // 아이템 ID
     
     [Header("아이템 속성")]
     [SerializeField] private bool isStackable = false;
@@ -125,7 +126,10 @@ public class CollectibleItem : InteractableObject
                // 퀘스트 리포팅 - 아이템 수집
                if (QuestSystem.Instance != null)
                {
-                   QuestSystem.Instance.ReceiveReport("Item", itemName, 1);
+                   // itemId가 있으면 itemId 사용, 없으면 itemName 사용
+                   string reportId = !string.IsNullOrEmpty(itemId) ? itemId : itemName;
+                   QuestSystem.Instance.ReportItemCollected(reportId, 1);
+                   Debug.Log($"[CollectibleItem] 퀘스트 리포팅: Collection, {reportId}, 1");
                }
                
                Debug.Log($"{itemName}을(를) 수집했습니다!");
@@ -165,8 +169,103 @@ public class CollectibleItem : InteractableObject
                if (inventoryManager != null)
                {
                    // Item 객체 생성
-                   Item item = new Item(itemName, itemDescription, itemType);
-                   item.icon = itemIcon;
+                   Item item = new Item(itemName.ToLower().Replace(" ", "_"), itemName, itemDescription, itemType);
+                   
+                   // 아이콘 설정 - 허브 아이템 특별 처리
+                   if (itemIcon != null)
+                   {
+                       item.icon = itemIcon;
+                       Debug.Log($"[CollectibleItem] Inspector 아이콘 사용: {itemName}");
+                   }
+                   else
+                   {
+                       // 허브 아이템 특별 처리
+                       if (itemName.Contains("허브") || itemName.Contains("herb") || itemName.ToLower().Contains("healing"))
+                       {
+                           // 여러 경로에서 허브 아이콘 로드 시도
+                           string[] herbPaths = {
+                               "Healing_Herb",
+                               "Healing_Herb.png",
+                               "healing_herb", 
+                               "Healing Herb",
+                               "healing herb",
+                               "치유 허브",
+                               "허브"
+                           };
+                           
+                           Sprite herbIcon = null;
+                           
+                           // 먼저 일반적인 경로들로 시도
+                           foreach (string path in herbPaths)
+                           {
+                               Debug.Log($"[CollectibleItem] 허브 아이콘 로드 시도: {path}");
+                               herbIcon = Resources.Load<Sprite>(path);
+                               if (herbIcon != null)
+                               {
+                                   Debug.Log($"[CollectibleItem] 허브 아이콘 로드 성공: {path}");
+                                   break;
+                               }
+                               else
+                               {
+                                   Debug.Log($"[CollectibleItem] 허브 아이콘 로드 실패: {path}");
+                               }
+                           }
+                           
+                           // 모든 경로 실패 시 Resources 폴더에서 모든 스프라이트 검색
+                           if (herbIcon == null)
+                           {
+                               Debug.Log("[CollectibleItem] Resources 폴더에서 모든 스프라이트 검색 중...");
+                               Sprite[] allSprites = Resources.LoadAll<Sprite>("");
+                               Debug.Log($"[CollectibleItem] Resources 폴더에서 발견된 스프라이트 수: {allSprites.Length}");
+                               
+                               // 모든 스프라이트 이름 출력
+                               foreach (Sprite sprite in allSprites)
+                               {
+                                   Debug.Log($"[CollectibleItem] 발견된 스프라이트: {sprite.name}");
+                               }
+                               
+                               foreach (Sprite sprite in allSprites)
+                               {
+                                   if (sprite.name.ToLower().Contains("herb") || 
+                                       sprite.name.ToLower().Contains("healing") ||
+                                       sprite.name.Contains("허브"))
+                                   {
+                                       herbIcon = sprite;
+                                       Debug.Log($"[CollectibleItem] 허브 아이콘 발견: {sprite.name}");
+                                       break;
+                                   }
+                               }
+                           }
+                           
+                           if (herbIcon != null)
+                           {
+                               item.icon = herbIcon;
+                               Debug.Log($"[CollectibleItem] 허브 아이콘 설정 완료: {herbIcon.name}");
+                           }
+                           else
+                           {
+                               Debug.LogWarning($"[CollectibleItem] 모든 경로에서 허브 아이콘을 찾을 수 없습니다. 동적 생성합니다.");
+                               // 동적 아이콘 생성
+                               item.icon = CreateDynamicHerbIcon();
+                               Debug.Log($"[CollectibleItem] 동적 허브 아이콘 생성 완료: {item.icon.name}");
+                           }
+                       }
+                       else
+                       {
+                           // 다른 아이템들
+                           string iconPath = GetIconPath(itemName, itemType);
+                           Sprite loadedIcon = Resources.Load<Sprite>(iconPath);
+                           if (loadedIcon != null)
+                           {
+                               item.icon = loadedIcon;
+                               Debug.Log($"[CollectibleItem] 아이콘 로드 성공: {iconPath}");
+                           }
+                           else
+                           {
+                               Debug.LogWarning($"[CollectibleItem] 아이콘을 찾을 수 없습니다: {iconPath}");
+                           }
+                       }
+                   }
                    
                    // 아이템 속성 설정
                    item.isStackable = isStackable;
@@ -177,10 +276,20 @@ public class CollectibleItem : InteractableObject
                    item.staminaRestore = staminaRestore;
                    item.value = value;
                    
-                   // 인벤토리에 추가
-                   if (inventoryManager.AddItem(item, 1))
+                   // 인벤토리에 추가 (자동 저장 포함)
+                   if (inventoryManager.AddItemWithAutoSave(item, 1))
                    {
-                       Debug.Log($"{itemName}이(가) 인벤토리에 추가되었습니다.");
+                       Debug.Log($"[CollectibleItem] {itemName}이(가) 인벤토리에 추가되었습니다. (자동 저장 활성화)");
+                       
+                       // 저장 상태 확인
+                       if (inventoryManager.AutoSaveOnChange)
+                       {
+                           Debug.Log($"[CollectibleItem] 자동 저장이 활성화되어 있습니다. Firebase: {inventoryManager.EnableFirebaseSync}, 로컬: {inventoryManager.EnableLocalSave}");
+                       }
+                       else
+                       {
+                           Debug.LogWarning("[CollectibleItem] 자동 저장이 비활성화되어 있습니다!");
+                       }
                    }
                    else
                    {
@@ -193,10 +302,87 @@ public class CollectibleItem : InteractableObject
                }
            }
            
-           /// <summary>
-           /// 아이템 재생성
-           /// </summary>
-           private void RespawnItem()
+    /// <summary>
+    /// 동적으로 허브 아이콘 생성
+    /// </summary>
+    private Sprite CreateDynamicHerbIcon()
+    {
+        int iconSize = 64;
+        Texture2D texture = new Texture2D(iconSize, iconSize);
+        
+        // 초록색 허브 아이콘 생성
+        Color[] pixels = new Color[iconSize * iconSize];
+        Vector2 center = new Vector2(iconSize / 2f, iconSize / 2f);
+        
+        for (int x = 0; x < iconSize; x++)
+        {
+            for (int y = 0; y < iconSize; y++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                
+                if (distance < iconSize / 3f)
+                {
+                    // 중앙 원형 - 밝은 초록색
+                    pixels[y * iconSize + x] = new Color(0.2f, 0.8f, 0.2f, 1f);
+                }
+                else if (distance < iconSize / 2f)
+                {
+                    // 외곽 원형 - 어두운 초록색
+                    pixels[y * iconSize + x] = new Color(0.1f, 0.5f, 0.1f, 1f);
+                }
+                else
+                {
+                    // 배경 - 투명
+                    pixels[y * iconSize + x] = Color.clear;
+                }
+            }
+        }
+        
+        texture.SetPixels(pixels);
+        texture.Apply();
+        
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, iconSize, iconSize), new Vector2(0.5f, 0.5f));
+        sprite.name = "Dynamic_Herb_Icon";
+        
+        Debug.Log("[CollectibleItem] 동적 허브 아이콘 생성 완료");
+        return sprite;
+    }
+    
+    /// <summary>
+    /// 아이템 타입과 이름에 따른 아이콘 경로 반환
+    /// </summary>
+    private string GetIconPath(string itemName, ItemType itemType)
+    {
+        // 허브 아이템 특별 처리
+        if (itemName.Contains("허브") || itemName.Contains("herb") || itemName.ToLower().Contains("healing"))
+        {
+            return "Healing_Herb";
+        }
+        
+        // 아이템 타입별 기본 경로
+        switch (itemType)
+        {
+            case ItemType.Food:
+                return $"Food/{itemName}";
+            case ItemType.Material:
+                return $"Material/{itemName}";
+            case ItemType.Tool:
+                return $"Tool/{itemName}";
+            case ItemType.Weapon:
+                return $"Weapon/{itemName}";
+            case ItemType.Armor:
+                return $"Armor/{itemName}";
+            case ItemType.Treasure:
+                return $"Treasure/{itemName}";
+            default:
+                return itemName;
+        }
+    }
+    
+    /// <summary>
+    /// 아이템 재생성
+    /// </summary>
+    private void RespawnItem()
     {
         if (destroyOnCollect)
         {
