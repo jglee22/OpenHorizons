@@ -135,6 +135,7 @@ public class PlayerCombatController : MonoBehaviour
     
     void HandleCombatInput()
     {
+        if (IsTouchOverUI()) return; // UI 위에서는 전투 입력 무시
         // 공격 입력 (마우스 왼쪽 클릭) - 콤보 시스템
         if (Input.GetMouseButtonDown(0) && CanAttack())
         {
@@ -153,6 +154,23 @@ public class PlayerCombatController : MonoBehaviour
         {
             StopBlocking();
         }
+    }
+
+    // UI 위 터치/클릭 여부 확인
+    bool IsTouchOverUI()
+    {
+        if (UnityEngine.EventSystems.EventSystem.current == null) return false;
+
+        // 마우스(에디터/PC)
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return true;
+
+        // 터치(모바일)
+        for (int i = 0; i < Input.touchCount; i++)
+        {
+            if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(Input.GetTouch(i).fingerId))
+                return true;
+        }
+        return false;
     }
     
     void UpdateCombatState()
@@ -178,7 +196,7 @@ public class PlayerCombatController : MonoBehaviour
         }
     }
     
-    bool CanAttack()
+    public bool CanAttack()
     {
         return !isAttacking && !isBlocking && !isDead && 
                Time.time - lastAttackTime >= attackCooldown;
@@ -448,7 +466,7 @@ public class PlayerCombatController : MonoBehaviour
     }
     
     // 콤보 공격 시스템
-    void PerformComboAttack()
+    public void PerformComboAttack()
     {
         // 이미 공격 중이면 무시
         if (isAttacking)

@@ -31,6 +31,12 @@ public class PlayerController : MonoBehaviour
     public bool enableFootstepSounds = true;
     public float footstepInterval = 0.5f;
     
+    [Header("Mobile/Input Bridge")]
+    [Tooltip("외부 입력(가상 조이스틱/버튼)을 사용할지 여부")] public bool useExternalInput = false;
+    [Tooltip("외부에서 주입되는 이동 입력 (x: 좌우, y: 전후)")] public Vector2 externalMoveInput;
+    [Tooltip("외부에서 주입되는 달리기 버튼 상태")] public bool externalRunPressed;
+    [Tooltip("외부에서 주입되는 점프 트리거(한 프레임 소비)")] public bool externalJumpPressed;
+    
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
@@ -140,8 +146,19 @@ public class PlayerController : MonoBehaviour
     
     void HandleMovement()
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal;
+        float vertical;
+        
+        if (useExternalInput)
+        {
+            horizontal = externalMoveInput.x;
+            vertical = externalMoveInput.y;
+        }
+        else
+        {
+            horizontal = Input.GetAxis("Horizontal");
+            vertical = Input.GetAxis("Vertical");
+        }
         
         Vector3 dir;
     if (cameraTransform != null)
@@ -157,7 +174,7 @@ public class PlayerController : MonoBehaviour
         float targetAngle = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0f, targetAngle, 0f);
 
-        bool running = Input.GetKey(KeyCode.LeftShift);
+        bool running = useExternalInput ? externalRunPressed : Input.GetKey(KeyCode.LeftShift);
         float curSpeed = running ? runSpeed : moveSpeed;
         moveXZ = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward * curSpeed;
     }
@@ -172,7 +189,8 @@ public class PlayerController : MonoBehaviour
     
     void HandleJump()
     {
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        bool jumpPressed = useExternalInput ? ConsumeExternalJumpPressed() : Input.GetButtonDown("Jump");
+        if (jumpPressed && isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
             
@@ -197,6 +215,14 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
+    // 외부 점프 트리거는 한 프레임만 소비되도록 처리
+    private bool ConsumeExternalJumpPressed()
+    {
+        if (!externalJumpPressed) return false;
+        externalJumpPressed = false;
+        return true;
+    }
     
     
     void UpdateAnimations()
@@ -208,16 +234,17 @@ public class PlayerController : MonoBehaviour
         }
         
         // 입력 기반으로 이동 상태 확인 (더 엄격한 임계값)
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal = useExternalInput ? externalMoveInput.x : Input.GetAxis("Horizontal");
+        float vertical = useExternalInput ? externalMoveInput.y : Input.GetAxis("Vertical");
         bool hasInput = Mathf.Abs(horizontal) > 0.2f || Mathf.Abs(vertical) > 0.2f;
         
         // 이동 속도 계산 (입력 기반으로 추정)
-        float speed = hasInput ? (Input.GetKey(KeyCode.LeftShift) ? runSpeed : moveSpeed) : 0f;
+        bool runHeld = useExternalInput ? externalRunPressed : Input.GetKey(KeyCode.LeftShift);
+        float speed = hasInput ? (runHeld ? runSpeed : moveSpeed) : 0f;
         
         // 이동 상태 확인 (입력만으로 판단, 더 즉각적인 반응)
         bool isMoving = hasInput;
-        bool isRunning = Input.GetKey(KeyCode.LeftShift) && isMoving;
+        bool isRunning = runHeld && isMoving;
         bool isWalking = isMoving && !isRunning;
         
         // 입력이 없으면 즉시 정지 상태로 설정
@@ -247,7 +274,7 @@ public class PlayerController : MonoBehaviour
         // 디버그 로그 (1초마다 출력)
         if (Time.frameCount % 60 == 0)
         {
-            Debug.Log($"애니메이션 파라미터 - Speed: {speed:F2}, HasInput: {hasInput}, IsMoving: {isMoving}, IsRunning: {isRunning}, IsWalking: {isWalking}, IsJumping: {isJumping}, IsGrounded: {isGrounded}, ShiftPressed: {Input.GetKey(KeyCode.LeftShift)}");
+            Debug.Log($"애니메이션 파라미터 - Speed: {speed:F2}, HasInput: {hasInput}, IsMoving: {isMoving}, IsRunning: {isRunning}, IsWalking: {isWalking}, IsJumping: {isJumping}, IsGrounded: {isGrounded}, RunHeld: {runHeld}");
             
             // 현재 애니메이션 상태 확인
             if (animator != null)
