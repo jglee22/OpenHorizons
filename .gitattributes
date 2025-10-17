@@ -3,3 +3,5 @@ Assets/Firebase/Plugins/x86_64/*.so filter=lfs diff=lfs merge=lfs -text
 *.so filter=lfs diff=lfs merge=lfs -text
 *.bundle filter=lfs diff=lfs merge=lfs -text
 *.fbx filter=lfs diff=lfs merge=lfs -text
+Assets/Animations/Idle.fbx filter=lfs diff=lfs merge=lfs -text
+Assets/Models/NPC/Brady.fbx filter=lfs diff=lfs merge=lfs -text
