@@ -245,6 +245,29 @@ public class ThirdPersonCamera : MonoBehaviour
     }
     
     /// <summary>
+    /// 카메라를 지정된 각도만큼 회전 (모바일 버튼용)
+    /// </summary>
+    public void RotateCamera(float angle)
+    {
+        currentRotationX += angle;
+        currentRotationX = NormalizeAngle(currentRotationX);
+    }
+
+    /// <summary>
+    /// 외부 입력(모바일 버튼 드래그)으로 카메라 회전 처리
+    /// delta.x: 수평(+우), delta.y: 수직(+상)
+    /// </summary>
+    public void HandleExternalRotate(Vector2 delta)
+    {
+        float mouseX = delta.x * rotationSpeed;
+        float mouseY = delta.y * rotationSpeed;
+        currentRotationX += mouseX;
+        currentRotationY -= mouseY;
+        currentRotationX = NormalizeAngle(currentRotationX);
+        currentRotationY = Mathf.Clamp(currentRotationY, minVerticalAngle, maxVerticalAngle);
+    }
+    
+    /// <summary>
     /// 카메라 위치를 강제로 올바른 위치로 설정
     /// </summary>
     private void ForceCameraPosition()

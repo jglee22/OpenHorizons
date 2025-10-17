@@ -37,6 +37,9 @@ public class PlayerController : MonoBehaviour
     [Tooltip("외부에서 주입되는 달리기 버튼 상태")] public bool externalRunPressed;
     [Tooltip("외부에서 주입되는 점프 트리거(한 프레임 소비)")] public bool externalJumpPressed;
     
+    [Header("Interaction")]
+    [Tooltip("상호작용 시스템 컴포넌트")] public NPCInteraction interactionSystem;
+    
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
@@ -83,6 +86,16 @@ public class PlayerController : MonoBehaviour
         if (animator == null)
         {
             Debug.LogError("자식 오브젝트에서 Animator를 찾을 수 없습니다! Rio 오브젝트에 Animator가 있는지 확인해주세요.");
+        }
+        
+        // 상호작용 시스템 초기화
+        if (interactionSystem == null)
+        {
+            interactionSystem = GetComponent<NPCInteraction>();
+            if (interactionSystem == null)
+            {
+                interactionSystem = gameObject.AddComponent<NPCInteraction>();
+            }
         }
         else
         {
