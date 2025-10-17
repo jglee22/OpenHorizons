@@ -23,6 +23,8 @@ public class InteractionManager : MonoBehaviour
     
     private void Start()
     {
+        Debug.Log("[InteractionManager] Start() 호출됨");
+        
         // UI 초기화
         if (interactionPromptUI != null)
         {
@@ -32,6 +34,17 @@ public class InteractionManager : MonoBehaviour
         {
             // UI가 없으면 자동 생성
             CreateSimplePromptUI();
+        }
+        
+        // Collider 확인
+        Collider col = GetComponent<Collider>();
+        if (col == null)
+        {
+            Debug.LogError("[InteractionManager] 플레이어에 Collider가 없습니다!");
+        }
+        else
+        {
+            Debug.Log($"[InteractionManager] Collider 발견: {col.name}, IsTrigger: {col.isTrigger}");
         }
     }
     
@@ -47,7 +60,22 @@ public class InteractionManager : MonoBehaviour
     {
         if (Input.GetKeyDown(interactionKey) && currentInteractable != null)
         {
-            currentInteractable.Interact();
+            // QuestGiver인 경우 다이얼로그 진행 처리
+            if (currentInteractable is QuestGiver questGiver)
+            {
+                if (questGiver.IsShowingDialogue())
+                {
+                    questGiver.NextDialogue();
+                }
+                else
+                {
+                    currentInteractable.Interact();
+                }
+            }
+            else
+            {
+                currentInteractable.Interact();
+            }
         }
     }
     
@@ -56,20 +84,35 @@ public class InteractionManager : MonoBehaviour
     /// </summary>
     private void OnTriggerEnter(Collider other)
     {
+        Debug.Log($"[InteractionManager] OnTriggerEnter: {other.name}, Layer: {other.gameObject.layer}");
+        
         IInteractable interactable = other.GetComponent<IInteractable>();
-        if (interactable != null && interactable.CanInteract)
+        if (interactable != null)
         {
-            if (!nearbyInteractables.Contains(interactable))
-            {
-                nearbyInteractables.Add(interactable);
-                if (showDebugInfo)
-                {
-                    Debug.Log($"상호작용 가능한 오브젝트 범위 진입: {other.name}");
-                }
-            }
+            Debug.Log($"[InteractionManager] IInteractable 발견: {other.name}, CanInteract: {interactable.CanInteract}");
             
-            // 가장 가까운 오브젝트를 현재 상호작용 대상으로 설정
-            UpdateCurrentInteractable();
+            if (interactable.CanInteract)
+            {
+                if (!nearbyInteractables.Contains(interactable))
+                {
+                    nearbyInteractables.Add(interactable);
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"상호작용 가능한 오브젝트 범위 진입: {other.name}");
+                    }
+                }
+                
+                // 가장 가까운 오브젝트를 현재 상호작용 대상으로 설정
+                UpdateCurrentInteractable();
+            }
+            else
+            {
+                Debug.Log($"[InteractionManager] 상호작용 불가능: {other.name} - CanInteract = false");
+            }
+        }
+        else
+        {
+            Debug.Log($"[InteractionManager] IInteractable 없음: {other.name}");
         }
     }
     
